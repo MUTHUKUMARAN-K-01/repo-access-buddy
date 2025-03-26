@@ -189,6 +189,8 @@ export class PostgresStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
+      // Use the 'users' table schema from shared/schema.ts
+      // which properly maps the database column names
       const result = await db.select().from(users).where(eq(users.username, username));
       return result.length > 0 ? result[0] : undefined;
     } catch (error) {
@@ -209,16 +211,14 @@ export class PostgresStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
-      // Extract user data from insert schema and match to our schema column names
-      const userData = {
+      // Create an object that matches the column names used in the database
+      const result = await db.insert(users).values({
         username: insertUser.username,
         email: insertUser.email,
-        // Use the correct property name from the schema
-        password: insertUser.password || '', 
-        fullName: insertUser.fullName || null // Ensure we have proper null handling
-      };
-      
-      const result = await db.insert(users).values(userData).returning();
+        // The column name is "password_hash" in the database but "password" in the schema
+        password_hash: insertUser.password,
+        full_name: insertUser.fullName
+      }).returning();
       
       return result[0];
     } catch (error) {
