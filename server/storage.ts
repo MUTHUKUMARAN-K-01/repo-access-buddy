@@ -179,8 +179,22 @@ export class PostgresStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     try {
-      const result = await db.select().from(users).where(eq(users.id, id));
-      return result.length > 0 ? result[0] : undefined;
+      // Use raw SQL to handle the column name mismatch
+      const query = 'SELECT * FROM users WHERE id = $1';
+      const result = await sql.query(query, [id]);
+      
+      if (result.rows.length === 0) {
+        return undefined;
+      }
+      
+      // Map database row to our User type
+      return {
+        id: result.rows[0].id,
+        username: result.rows[0].username,
+        password: result.rows[0].password_hash, // Map password_hash from DB to password in our schema
+        email: result.rows[0].email,
+        createdAt: result.rows[0].created_at
+      };
     } catch (error) {
       console.error('Error fetching user by ID:', error);
       throw error;
@@ -189,10 +203,23 @@ export class PostgresStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
-      // Use the 'users' table schema from shared/schema.ts
-      // which properly maps the database column names
-      const result = await db.select().from(users).where(eq(users.username, username));
-      return result.length > 0 ? result[0] : undefined;
+      // Use SQL tagged template for proper parameter interpolation
+      const result = await sql`
+        SELECT * FROM users WHERE username = ${username}
+      `;
+      
+      if (result.length === 0) {
+        return undefined;
+      }
+      
+      // Map database row to our User type
+      return {
+        id: result[0].id,
+        username: result[0].username,
+        password: result[0].password,
+        email: result[0].email,
+        createdAt: result[0].created_at
+      };
     } catch (error) {
       console.error('Error fetching user by username:', error);
       throw error;
@@ -201,8 +228,22 @@ export class PostgresStorage implements IStorage {
   
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
-      const result = await db.select().from(users).where(eq(users.email, email));
-      return result.length > 0 ? result[0] : undefined;
+      // Use raw SQL to handle the column name mismatch
+      const query = 'SELECT * FROM users WHERE email = $1';
+      const result = await sql.query(query, [email]);
+      
+      if (result.rows.length === 0) {
+        return undefined;
+      }
+      
+      // Map database row to our User type
+      return {
+        id: result.rows[0].id,
+        username: result.rows[0].username,
+        password: result.rows[0].password_hash, // Map password_hash from DB to password in our schema
+        email: result.rows[0].email,
+        createdAt: result.rows[0].created_at
+      };
     } catch (error) {
       console.error('Error fetching user by email:', error);
       throw error;
@@ -211,15 +252,25 @@ export class PostgresStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
-      // Create an object that matches the columns in the database (no full_name column)
-      const result = await db.insert(users).values({
-        username: insertUser.username,
-        email: insertUser.email,
-        // The column name is "password_hash" in the database but "password" in the schema
-        password_hash: insertUser.password
-      }).returning();
+      // Use direct SQL to ensure column names match the database
+      const result = await sql`
+        INSERT INTO users (username, email, password) 
+        VALUES (${insertUser.username}, ${insertUser.email}, ${insertUser.password}) 
+        RETURNING *
+      `;
       
-      return result[0];
+      if (result.length === 0) {
+        throw new Error('Failed to create user');
+      }
+      
+      // Map database row to our User type, matching our schema
+      return {
+        id: result[0].id,
+        username: result[0].username,
+        password: result[0].password,
+        email: result[0].email,
+        createdAt: result[0].created_at
+      };
     } catch (error) {
       console.error('Error creating user:', error);
       throw error;
