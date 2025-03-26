@@ -1,12 +1,11 @@
+
 import { useState } from "react";
 import { nanoid } from "nanoid";
-import { useToast } from "@/components/ui/use-toast";
 import { apiRequest } from "@/lib/api";
 
 export function useChat() {
   const [messages, setMessages] = useState<{ id: string; text: string; isUser: boolean; }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   // Using a default user ID of 1 for demonstration
   const userId = 1;
@@ -41,14 +40,6 @@ export function useChat() {
       ]);
     } catch (error) {
       console.error('Error sending message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to get a response. Please try again.",
-        variant: "destructive",
-      });
-
-      // Remove the optimistically added message on error
-      setMessages((prev) => prev.filter(msg => msg.id !== userMessageId));
     } finally {
       setIsLoading(false);
     }
