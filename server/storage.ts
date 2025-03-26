@@ -179,21 +179,20 @@ export class PostgresStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     try {
-      // Use raw SQL to handle the column name mismatch
-      const query = 'SELECT * FROM users WHERE id = $1';
-      const result = await sql.query(query, [id]);
+      // Use SQL tagged template for proper parameter interpolation
+      const result = await sql`SELECT * FROM users WHERE id = ${id}`;
       
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         return undefined;
       }
       
       // Map database row to our User type
       return {
-        id: result.rows[0].id,
-        username: result.rows[0].username,
-        password: result.rows[0].password_hash, // Map password_hash from DB to password in our schema
-        email: result.rows[0].email,
-        createdAt: result.rows[0].created_at
+        id: result[0].id,
+        username: result[0].username,
+        password: result[0].password, // Column is actually 'password' in the database
+        email: result[0].email,
+        createdAt: result[0].created_at
       };
     } catch (error) {
       console.error('Error fetching user by ID:', error);
@@ -228,21 +227,20 @@ export class PostgresStorage implements IStorage {
   
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
-      // Use raw SQL to handle the column name mismatch
-      const query = 'SELECT * FROM users WHERE email = $1';
-      const result = await sql.query(query, [email]);
+      // Use SQL tagged template for proper parameter interpolation
+      const result = await sql`SELECT * FROM users WHERE email = ${email}`;
       
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         return undefined;
       }
       
       // Map database row to our User type
       return {
-        id: result.rows[0].id,
-        username: result.rows[0].username,
-        password: result.rows[0].password_hash, // Map password_hash from DB to password in our schema
-        email: result.rows[0].email,
-        createdAt: result.rows[0].created_at
+        id: result[0].id,
+        username: result[0].username,
+        password: result[0].password, // Column is actually 'password' in the database
+        email: result[0].email,
+        createdAt: result[0].created_at
       };
     } catch (error) {
       console.error('Error fetching user by email:', error);
