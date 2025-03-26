@@ -132,7 +132,12 @@ export class MemStorage implements IStorage {
   async getChatMessages(userId: number, limit?: number): Promise<ChatMessage[]> {
     const userMessages = Array.from(this.chatMessages.values())
       .filter((message) => message.userId === userId)
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      .sort((a, b) => {
+        // Safely handle null timestamps by defaulting to 0
+        const aTime = a.timestamp ? a.timestamp.getTime() : 0;
+        const bTime = b.timestamp ? b.timestamp.getTime() : 0;
+        return aTime - bTime;
+      });
     
     if (limit) {
       return userMessages.slice(-limit);
@@ -153,7 +158,12 @@ export class MemStorage implements IStorage {
   async getFinancialGoals(userId: number): Promise<FinancialGoal[]> {
     return Array.from(this.financialGoals.values())
       .filter((goal) => goal.userId === userId)
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      .sort((a, b) => {
+        // Safely handle null createdAt values
+        const aTime = a.createdAt ? a.createdAt.getTime() : 0;
+        const bTime = b.createdAt ? b.createdAt.getTime() : 0;
+        return aTime - bTime;
+      });
   }
   
   async getFinancialGoal(id: number): Promise<FinancialGoal | undefined> {
@@ -163,7 +173,19 @@ export class MemStorage implements IStorage {
   async createFinancialGoal(insertGoal: InsertFinancialGoal): Promise<FinancialGoal> {
     const id = this.goalIdCounter++;
     const createdAt = new Date();
-    const goal: FinancialGoal = { ...insertGoal, id, createdAt };
+    
+    // Create properly typed goal object
+    const goal: FinancialGoal = {
+      id,
+      userId: insertGoal.userId,
+      title: insertGoal.title,
+      targetAmount: insertGoal.targetAmount,
+      currentAmount: insertGoal.currentAmount,
+      category: insertGoal.category,
+      deadline: insertGoal.deadline ?? null,
+      createdAt
+    };
+    
     this.financialGoals.set(id, goal);
     return goal;
   }
@@ -175,9 +197,16 @@ export class MemStorage implements IStorage {
       return undefined;
     }
     
+    // Handle the special case for the deadline field
+    const deadline = updateData.deadline !== undefined ? updateData.deadline : existingGoal.deadline;
+    
     const updatedGoal: FinancialGoal = {
       ...existingGoal,
-      ...updateData,
+      title: updateData.title || existingGoal.title,
+      targetAmount: updateData.targetAmount || existingGoal.targetAmount,
+      currentAmount: updateData.currentAmount || existingGoal.currentAmount,
+      category: updateData.category || existingGoal.category,
+      deadline: deadline
     };
     
     this.financialGoals.set(id, updatedGoal);
