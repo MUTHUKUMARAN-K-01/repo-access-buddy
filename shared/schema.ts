@@ -2,13 +2,13 @@ import { pgTable, text, serial, integer, numeric, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// User model
+// User model - Match actual database structure
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password_hash").notNull(), // Column name in DB is password_hash
   email: text("email").notNull().unique(),
-  fullName: text("full_name"),
+  // fullName column doesn't exist in the database table
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -211,13 +211,12 @@ export class PostgresStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
-      // Create an object that matches the column names used in the database
+      // Create an object that matches the columns in the database (no full_name column)
       const result = await db.insert(users).values({
         username: insertUser.username,
         email: insertUser.email,
         // The column name is "password_hash" in the database but "password" in the schema
-        password_hash: insertUser.password,
-        full_name: insertUser.fullName
+        password_hash: insertUser.password
       }).returning();
       
       return result[0];
