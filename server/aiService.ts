@@ -41,30 +41,31 @@ export async function generateFinanceResponse(userMessage: string, chatHistory: 
       return "API key not configured. Please set the OPENAI_API_KEY environment variable.";
     }
 
-    // Format chat history for the API with proper typing
-    const messages = [
-      { role: 'system' as const, content: SYSTEM_PROMPT },
+    // Format chat history for the API
+    type MessageRole = 'system' | 'user' | 'assistant';
+    const messages: Array<{role: MessageRole, content: string}> = [
+      { role: 'system', content: SYSTEM_PROMPT },
     ];
     
     // Add chat history if available
     if (chatHistory.length > 0) {
       for (let i = 0; i < chatHistory.length; i += 2) {
         if (i < chatHistory.length) {
-          messages.push({ role: 'user' as const, content: chatHistory[i] });
+          messages.push({ role: 'user', content: chatHistory[i] });
         }
         if (i + 1 < chatHistory.length) {
-          messages.push({ role: 'assistant' as const, content: chatHistory[i + 1] });
+          messages.push({ role: 'assistant', content: chatHistory[i + 1] });
         }
       }
     }
     
     // Add the current user message
-    messages.push({ role: 'user' as const, content: userMessage });
+    messages.push({ role: 'user', content: userMessage });
 
-    // Make API request
+    // Make API request with type assertion to avoid type errors
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages,
+      messages: messages as any,
       max_tokens: 500,
       temperature: 0.7,
     });

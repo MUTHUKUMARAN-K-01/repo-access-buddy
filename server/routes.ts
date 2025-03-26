@@ -8,6 +8,7 @@ import {
   insertUserSchema 
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
+import { generateFinanceResponse, generateLocalFinanceResponse } from "./aiService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const router = express.Router();
@@ -176,8 +177,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save user message
       const savedMessage = await storage.createChatMessage(messageData);
 
-      // Generate AI response
-      const aiResponse = generateAIResponse(messageData.message);
+      // Get previous chat messages for context (last 5 messages)
+      const previousMessages = await storage.getChatMessages(messageData.userId, 5);
+      const chatHistory: string[] = [];
+      
+      // Format previous messages for the AI (convert to pairs of user/assistant messages)
+      previousMessages.forEach(msg => {
+        chatHistory.push(msg.message);
+      });
+      
+      let aiResponse: string;
+      try {
+        // Generate AI response using OpenAI integration
+        aiResponse = await generateFinanceResponse(messageData.message, chatHistory);
+      } catch (aiError) {
+        console.error("Error generating AI response:", aiError);
+        // Fallback to the local response generator if OpenAI fails
+        aiResponse = generateLocalFinanceResponse(messageData.message);
+      }
 
       // Save AI response
       const aiMessage = await storage.createChatMessage({

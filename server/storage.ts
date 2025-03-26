@@ -91,7 +91,22 @@ export class MemStorage implements IStorage {
   async createFinancialProfile(insertProfile: InsertFinancialProfile): Promise<FinancialProfile> {
     const id = this.profileIdCounter++;
     const updatedAt = new Date();
-    const profile: FinancialProfile = { ...insertProfile, id, updatedAt };
+    
+    // Create a properly typed profile object to match FinancialProfile
+    const profile: FinancialProfile = {
+      id,
+      userId: insertProfile.userId,
+      monthlyIncome: insertProfile.monthlyIncome ?? null,
+      housingExpense: insertProfile.housingExpense ?? null,
+      transportExpense: insertProfile.transportExpense ?? null,
+      foodExpense: insertProfile.foodExpense ?? null,
+      otherExpenses: insertProfile.otherExpenses ?? null,
+      savingsGoal: insertProfile.savingsGoal ?? null,
+      retirementGoal: insertProfile.retirementGoal ?? null,
+      riskTolerance: insertProfile.riskTolerance ?? null,
+      updatedAt
+    };
+    
     this.financialProfiles.set(id, profile);
     return profile;
   }

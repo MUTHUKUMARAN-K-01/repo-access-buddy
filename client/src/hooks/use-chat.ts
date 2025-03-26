@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { nanoid } from "nanoid";
-import { apiRequest } from "@/lib/api";
+import { apiRequest } from "../lib/queryClient";
 
 export function useChat() {
   const [messages, setMessages] = useState<{ id: string; text: string; isUser: boolean; }[]>([]);
