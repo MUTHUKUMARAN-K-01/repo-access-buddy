@@ -209,11 +209,12 @@ export class PostgresStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
-      // Extract user data from insert schema
+      // Extract user data from insert schema and match to our schema column names
       const userData = {
         username: insertUser.username,
         email: insertUser.email,
-        password: insertUser.passwordHash || '', // Match schema column name
+        // Use the correct property name from the schema
+        password: insertUser.password || '', 
         fullName: insertUser.fullName || null // Ensure we have proper null handling
       };
       

@@ -25,7 +25,8 @@ export async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         username VARCHAR(100) NOT NULL UNIQUE,
         email VARCHAR(100) NOT NULL UNIQUE,
-        password_hash VARCHAR(100) NOT NULL,
+        password VARCHAR(100) NOT NULL,
+        full_name VARCHAR(100),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
@@ -37,9 +38,12 @@ export async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         monthly_income DECIMAL(12, 2),
-        monthly_expenses DECIMAL(12, 2),
-        debt_amount DECIMAL(12, 2),
-        savings_amount DECIMAL(12, 2),
+        housing_expense DECIMAL(12, 2),
+        transport_expense DECIMAL(12, 2),
+        food_expense DECIMAL(12, 2),
+        other_expenses DECIMAL(12, 2),
+        savings_goal DECIMAL(12, 2),
+        retirement_goal DECIMAL(12, 2),
         risk_tolerance VARCHAR(50),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
@@ -66,7 +70,7 @@ export async function initializeDatabase() {
         title VARCHAR(100) NOT NULL,
         target_amount DECIMAL(12, 2) NOT NULL,
         current_amount DECIMAL(12, 2) NOT NULL,
-        deadline DATE NOT NULL,
+        deadline TIMESTAMP WITH TIME ZONE,
         category VARCHAR(50) NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
