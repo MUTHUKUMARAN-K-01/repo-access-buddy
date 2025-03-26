@@ -209,11 +209,15 @@ export class PostgresStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
-      const result = await db.insert(users).values({
+      // Extract user data from insert schema
+      const userData = {
         username: insertUser.username,
         email: insertUser.email,
-        passwordHash: insertUser.passwordHash,
-      }).returning();
+        password: insertUser.passwordHash || '', // Match schema column name
+        fullName: insertUser.fullName || null // Ensure we have proper null handling
+      };
+      
+      const result = await db.insert(users).values(userData).returning();
       
       return result[0];
     } catch (error) {
@@ -236,14 +240,22 @@ export class PostgresStorage implements IStorage {
   
   async createFinancialProfile(insertProfile: InsertFinancialProfile): Promise<FinancialProfile> {
     try {
-      const result = await db.insert(financialProfiles).values({
+      // Map the financial profile to match our database schema
+      // This helps handle the differences between our in-memory and SQL models
+      const profileData = {
         userId: insertProfile.userId,
         monthlyIncome: insertProfile.monthlyIncome,
-        monthlyExpenses: insertProfile.monthlyExpenses,
-        debtAmount: insertProfile.debtAmount,
-        savingsAmount: insertProfile.savingsAmount,
-        riskTolerance: insertProfile.riskTolerance,
-      }).returning();
+        // Map to our SQL schema columns (snake_case to camelCase)
+        housingExpense: insertProfile.housingExpense,
+        transportExpense: insertProfile.transportExpense,
+        foodExpense: insertProfile.foodExpense,
+        otherExpenses: insertProfile.otherExpenses,
+        savingsGoal: insertProfile.savingsGoal,
+        retirementGoal: insertProfile.retirementGoal,
+        riskTolerance: insertProfile.riskTolerance
+      };
+      
+      const result = await db.insert(financialProfiles).values(profileData).returning();
       
       return result[0];
     } catch (error) {
@@ -278,18 +290,24 @@ export class PostgresStorage implements IStorage {
   // Chat Message operations
   async getChatMessages(userId: number, limit?: number): Promise<ChatMessage[]> {
     try {
-      let query = db.select().from(chatMessages)
-        .where(eq(chatMessages.userId, userId))
-        .orderBy(chatMessages.timestamp);
+      // Get all messages for user, ordered by timestamp
+      const result = await db.select().from(chatMessages)
+        .where(eq(chatMessages.userId, userId));
       
-      if (limit) {
-        // Unfortunately, direct LIMIT with offset not supported here, 
-        // but we can do it in JS after fetching
-        const result = await query;
-        return result.slice(-limit);
+      // Sort them manually to handle null timestamps
+      const sortedMessages = result.sort((a, b) => {
+        // Handle null timestamps by treating them as older
+        const aTime = a.timestamp ? a.timestamp.getTime() : 0;
+        const bTime = b.timestamp ? b.timestamp.getTime() : 0;
+        return aTime - bTime;
+      });
+      
+      // Apply limit if needed
+      if (limit && limit > 0) {
+        return sortedMessages.slice(-limit);
       }
       
-      return await query;
+      return sortedMessages;
     } catch (error) {
       console.error('Error fetching chat messages:', error);
       throw error;
@@ -314,9 +332,16 @@ export class PostgresStorage implements IStorage {
   // Financial Goal operations
   async getFinancialGoals(userId: number): Promise<FinancialGoal[]> {
     try {
-      return await db.select().from(financialGoals)
-        .where(eq(financialGoals.userId, userId))
-        .orderBy(financialGoals.createdAt);
+      // Get all goals for the user
+      const result = await db.select().from(financialGoals)
+        .where(eq(financialGoals.userId, userId));
+      
+      // Sort manually to handle null createdAt values
+      return result.sort((a, b) => {
+        const aTime = a.createdAt ? a.createdAt.getTime() : 0;
+        const bTime = b.createdAt ? b.createdAt.getTime() : 0;
+        return aTime - bTime;
+      });
     } catch (error) {
       console.error('Error fetching financial goals:', error);
       throw error;

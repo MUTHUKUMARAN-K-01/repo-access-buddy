@@ -36,9 +36,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password, ...userWithoutPassword } = newUser;
       res.status(201).json(userWithoutPassword);
     } catch (error) {
+      // Check if it's a ZodError using a safer approach
       if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
+        if ('issues' in error && Array.isArray((error as any).issues)) {
+          // This is likely a ZodError
+          res.status(400).json({ message: fromZodError(error as any).message });
+        } else {
+          // Regular Error
+          res.status(400).json({ message: error.message || "Invalid request data" });
+        }
       } else {
+        // Unknown error
         res.status(500).json({ message: "An unknown error occurred" });
       }
     }
@@ -113,9 +121,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(200).json(profile);
     } catch (error) {
+      // Check if it's a ZodError using a safer approach
       if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
+        if ('issues' in error && Array.isArray((error as any).issues)) {
+          // This is likely a ZodError
+          res.status(400).json({ message: fromZodError(error as any).message });
+        } else {
+          // Regular Error
+          res.status(400).json({ message: error.message || "Invalid profile data" });
+        }
       } else {
+        // Unknown error
         res.status(500).json({ message: "An error occurred saving the financial profile" });
       }
     }
@@ -166,9 +182,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json({ userMessage: savedMessage, aiMessage });
     } catch (error) {
+      // Check if it's a ZodError using a safer approach
       if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
+        if ('issues' in error && Array.isArray((error as any).issues)) {
+          // This is likely a ZodError
+          res.status(400).json({ message: fromZodError(error as any).message });
+        } else {
+          // Regular Error
+          res.status(400).json({ message: error.message || "Invalid chat message data" });
+        }
       } else {
+        // Unknown error
         res.status(500).json({ message: "An error occurred saving the chat message" });
       }
     }
@@ -206,9 +230,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newGoal = await storage.createFinancialGoal(goalData);
       res.status(201).json(newGoal);
     } catch (error) {
+      // Check if it's a ZodError using a safer approach
       if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
+        if ('issues' in error && Array.isArray((error as any).issues)) {
+          // This is likely a ZodError
+          res.status(400).json({ message: fromZodError(error as any).message });
+        } else {
+          // Regular Error
+          res.status(400).json({ message: error.message || "Invalid financial goal data" });
+        }
       } else {
+        // Unknown error
         res.status(500).json({ message: "An error occurred creating the financial goal" });
       }
     }
