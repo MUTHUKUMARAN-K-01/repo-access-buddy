@@ -15,7 +15,7 @@ type NavLinkProps = {
 
 const NavLink = ({ href, children, currentPath }: NavLinkProps) => {
   const isActive = currentPath === href;
-  
+
   return (
     <Link href={href}>
       <a className={`px-3 py-2 text-sm font-medium transition-colors ${
@@ -31,16 +31,18 @@ const NavLink = ({ href, children, currentPath }: NavLinkProps) => {
 
 export default function Header() {
   const [location] = useLocation();
-  
+
   return (
     <header className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <div className="flex items-center">
           <div className="flex items-center flex-shrink-0">
             <span className="material-icons text-primary mr-2">account_balance</span>
-            <Link href="/">
-              <a className="text-xl font-bold text-primary">FinanceGuru</a>
-            </Link>
+            <div className="flex items-center">
+              <Link href="/">
+                <a className="text-xl font-bold text-primary">FinanceGuru</a>
+              </Link>
+            </div>
           </div>
           <nav className="hidden md:ml-10 md:flex md:space-x-8">
             <NavLink href="/" currentPath={location}>Dashboard</NavLink>
@@ -50,12 +52,12 @@ export default function Header() {
             <NavLink href="/education" currentPath={location}>Learn</NavLink>
           </nav>
         </div>
-        
+
         <div className="flex items-center">
           <Button className="bg-primary hover:bg-primary/90 text-white">
             Get Started
           </Button>
-          
+
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="ml-4 md:hidden">
