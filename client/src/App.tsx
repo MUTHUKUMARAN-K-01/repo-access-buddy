@@ -8,6 +8,7 @@ import Budget from "@/pages/budget";
 import Investing from "@/pages/investing";
 import Goals from "@/pages/goals";
 import Education from "@/pages/education";
+import LearningHub from "@/pages/learning-hub";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 
@@ -22,6 +23,7 @@ function Router() {
           <Route path="/investing" component={Investing} />
           <Route path="/goals" component={Goals} />
           <Route path="/education" component={Education} />
+          <Route path="/learning-hub" component={LearningHub} />
           <Route component={NotFound} />
         </Switch>
       </main>

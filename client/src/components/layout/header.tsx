@@ -50,6 +50,7 @@ export default function Header() {
             <NavLink href="/investing" currentPath={location}>Investing</NavLink>
             <NavLink href="/goals" currentPath={location}>Goals</NavLink>
             <NavLink href="/education" currentPath={location}>Learn</NavLink>
+            <NavLink href="/learning-hub" currentPath={location}>Learning Hub</NavLink>
           </nav>
         </div>
 
@@ -81,6 +82,9 @@ export default function Header() {
                 </Link>
                 <Link href="/education">
                   <a className="px-4 py-2 text-base font-medium hover:bg-muted rounded-md">Learn</a>
+                </Link>
+                <Link href="/learning-hub">
+                  <a className="px-4 py-2 text-base font-medium hover:bg-muted rounded-md">Learning Hub</a>
                 </Link>
               </div>
             </SheetContent>
