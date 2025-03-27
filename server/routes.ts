@@ -9,6 +9,7 @@ import {
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { generateFinanceResponse, generateLocalFinanceResponse } from "./aiService";
+import { getStockQuote, getHistoricalData, searchStocks, getCompanyOverview } from "./stockService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const router = express.Router();
@@ -451,6 +452,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ message: "An error occurred calculating investment growth" });
+    }
+  });
+
+  // --- Stock Market Data routes ---
+  
+  // Get stock quote
+  router.get("/stocks/quote/:symbol", async (req: Request, res: Response) => {
+    try {
+      const symbol = req.params.symbol.toUpperCase();
+      
+      if (!symbol) {
+        return res.status(400).json({ message: "Stock symbol is required" });
+      }
+      
+      const stockQuote = await getStockQuote(symbol);
+      res.status(200).json(stockQuote);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message || "Invalid stock symbol" });
+      } else {
+        res.status(500).json({ message: "An error occurred fetching stock data" });
+      }
+    }
+  });
+  
+  // Get historical stock data
+  router.get("/stocks/history/:symbol", async (req: Request, res: Response) => {
+    try {
+      const symbol = req.params.symbol.toUpperCase();
+      const outputSize = (req.query.outputSize as 'compact' | 'full') || 'compact';
+      
+      if (!symbol) {
+        return res.status(400).json({ message: "Stock symbol is required" });
+      }
+      
+      const historicalData = await getHistoricalData(symbol, outputSize);
+      res.status(200).json(historicalData);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message || "Invalid request" });
+      } else {
+        res.status(500).json({ message: "An error occurred fetching historical stock data" });
+      }
+    }
+  });
+  
+  // Search for stocks
+  router.get("/stocks/search", async (req: Request, res: Response) => {
+    try {
+      const keywords = req.query.keywords as string;
+      
+      if (!keywords) {
+        return res.status(400).json({ message: "Search keywords are required" });
+      }
+      
+      const searchResults = await searchStocks(keywords);
+      res.status(200).json(searchResults);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message || "Invalid search request" });
+      } else {
+        res.status(500).json({ message: "An error occurred searching for stocks" });
+      }
+    }
+  });
+  
+  // Get company overview
+  router.get("/stocks/company/:symbol", async (req: Request, res: Response) => {
+    try {
+      const symbol = req.params.symbol.toUpperCase();
+      
+      if (!symbol) {
+        return res.status(400).json({ message: "Stock symbol is required" });
+      }
+      
+      const companyData = await getCompanyOverview(symbol);
+      res.status(200).json(companyData);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message || "Invalid company request" });
+      } else {
+        res.status(500).json({ message: "An error occurred fetching company data" });
+      }
     }
   });
 

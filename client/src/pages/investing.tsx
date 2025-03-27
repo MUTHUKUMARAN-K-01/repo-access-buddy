@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InvestmentCalculator from "@/components/investment/investment-calculator";
+import StockLookup from "@/components/investment/stock-lookup";
+import { SearchIcon, CalculatorIcon, BookOpenIcon, BrainIcon } from "lucide-react";
 
 export default function Investing() {
   return (
@@ -13,13 +15,30 @@ export default function Investing() {
 
       <Tabs defaultValue="calculator" className="w-full">
         <TabsList className="mb-6">
-          <TabsTrigger value="calculator">Investment Calculator</TabsTrigger>
-          <TabsTrigger value="basics">Investment Basics</TabsTrigger>
-          <TabsTrigger value="strategies">Investment Strategies</TabsTrigger>
+          <TabsTrigger value="calculator" className="flex items-center">
+            <CalculatorIcon className="mr-2 h-4 w-4" />
+            Investment Calculator
+          </TabsTrigger>
+          <TabsTrigger value="stocks" className="flex items-center">
+            <SearchIcon className="mr-2 h-4 w-4" />
+            Stock Lookup
+          </TabsTrigger>
+          <TabsTrigger value="basics" className="flex items-center">
+            <BookOpenIcon className="mr-2 h-4 w-4" />
+            Investment Basics
+          </TabsTrigger>
+          <TabsTrigger value="strategies" className="flex items-center">
+            <BrainIcon className="mr-2 h-4 w-4" />
+            Investment Strategies
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="calculator">
           <InvestmentCalculator />
+        </TabsContent>
+        
+        <TabsContent value="stocks">
+          <StockLookup />
         </TabsContent>
         
         <TabsContent value="basics">
