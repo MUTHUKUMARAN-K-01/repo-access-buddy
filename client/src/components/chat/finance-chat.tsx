@@ -25,9 +25,15 @@ export default function FinanceChat() {
     setNewMessage("");
   };
   
+  // Function to cycle through models: OpenAI -> Deepseek -> HuggingFace -> OpenAI
   const handleModelToggle = () => {
-    // Toggle between OpenAI and Deepseek
-    changeModel(selectedModel === 'openai' ? 'deepseek' : 'openai');
+    if (selectedModel === 'openai') {
+      changeModel('deepseek');
+    } else if (selectedModel === 'deepseek') {
+      changeModel('huggingface');
+    } else {
+      changeModel('openai');
+    }
   };
 
   return (
@@ -44,17 +50,35 @@ export default function FinanceChat() {
           
           {/* Model Selector */}
           <div className="flex items-center space-x-2">
-            <Label htmlFor="model-toggle" className={selectedModel === 'openai' ? 'text-blue-600 font-medium' : 'text-gray-500'}>
-              OpenAI
-            </Label>
-            <Switch 
-              id="model-toggle" 
-              checked={selectedModel === 'deepseek'}
-              onCheckedChange={handleModelToggle}
-            />
-            <Label htmlFor="model-toggle" className={selectedModel === 'deepseek' ? 'text-blue-600 font-medium' : 'text-gray-500'}>
-              Deepseek
-            </Label>
+            <div className="flex items-center border rounded-md p-1">
+              <Button
+                type="button"
+                variant={selectedModel === 'openai' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => changeModel('openai')}
+                className="text-xs px-2 py-1"
+              >
+                OpenAI
+              </Button>
+              <Button
+                type="button"
+                variant={selectedModel === 'deepseek' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => changeModel('deepseek')}
+                className="text-xs px-2 py-1"
+              >
+                Deepseek
+              </Button>
+              <Button
+                type="button"
+                variant={selectedModel === 'huggingface' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => changeModel('huggingface')}
+                className="text-xs px-2 py-1"
+              >
+                HuggingFace
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -138,7 +162,10 @@ export default function FinanceChat() {
           </p>
           <p className="text-xs text-gray-500">
             <span className="material-icons text-xs align-middle">smart_toy</span>
-            Using {selectedModel === 'openai' ? 'OpenAI' : 'Deepseek'} model
+            Using {
+              selectedModel === 'openai' ? 'OpenAI' : 
+              selectedModel === 'deepseek' ? 'Deepseek' : 'HuggingFace'
+            } model
           </p>
         </div>
       </CardContent>

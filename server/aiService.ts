@@ -14,7 +14,7 @@ const openai = new OpenAI({
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
 // AI model configuration
-export type AIModel = 'openai' | 'deepseek';
+export type AIModel = 'openai' | 'deepseek' | 'huggingface';
 
 // System prompt for financial advisor role
 const SYSTEM_PROMPT = `
@@ -49,6 +49,8 @@ export async function generateFinanceResponse(
     // Use the appropriate model based on the parameter
     if (model === 'deepseek') {
       return await generateDeepseekResponse(userMessage, chatHistory);
+    } else if (model === 'huggingface') {
+      return await generateHuggingFaceResponse(userMessage, chatHistory);
     } else {
       return await generateOpenAIResponse(userMessage, chatHistory);
     }
@@ -183,6 +185,88 @@ async function generateDeepseekResponse(userMessage: string, chatHistory: string
     console.error("Error with Deepseek API:", error);
     if (axios.isAxiosError(error) && error.response) {
       throw new Error(`Deepseek API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+    } else {
+      throw error;
+    }
+  }
+
+  return response;
+}
+
+/**
+ * Generate a response using HuggingFace's free Inference API - no API key needed
+ * @param userMessage The user's finance-related question
+ * @param chatHistory Previous messages for context
+ * @returns AI-generated response
+ */
+async function generateHuggingFaceResponse(userMessage: string, chatHistory: string[] = []): Promise<string> {
+  // Default fallback response if API call fails
+  let response = "I'm having trouble connecting to my knowledge base right now. Please try again in a moment.";
+  
+  // Create context from chat history and current message
+  let context = "";
+  
+  if (chatHistory.length > 0) {
+    for (let i = 0; i < chatHistory.length; i++) {
+      const role = i % 2 === 0 ? "User" : "AI";
+      context += `${role}: ${chatHistory[i]}\n`;
+    }
+  }
+  
+  // Build prompt for the financial advisor
+  const prompt = `${SYSTEM_PROMPT}
+
+${context ? context + "\n" : ""}User: ${userMessage}
+
+AI:`;
+
+  try {
+    // Make API request to HuggingFace Inference API (no auth required for this model)
+    const huggingFaceResponse = await axios.post(
+      "https://api-inference.huggingface.co/models/facebook/opt-2.7b",
+      {
+        inputs: prompt,
+        parameters: {
+          max_new_tokens: 500,
+          temperature: 0.7,
+          top_p: 0.95,
+          do_sample: true,
+        },
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (huggingFaceResponse.data && typeof huggingFaceResponse.data === 'string') {
+      // Remove the prompt part from the response and extract just the AI's answer
+      const generatedText = huggingFaceResponse.data;
+      // Use [\s\S] instead of . with s flag for better compatibility
+      const aiResponseMatch = generatedText.match(/AI:([\s\S]*?)(?:User:|$)/);
+      response = aiResponseMatch ? aiResponseMatch[1].trim() : generatedText;
+    } else if (Array.isArray(huggingFaceResponse.data) && huggingFaceResponse.data.length > 0) {
+      // Extract generated text from array response format
+      const generatedText = huggingFaceResponse.data[0]?.generated_text || "";
+      // Use [\s\S] instead of . with s flag for better compatibility
+      const aiResponseMatch = generatedText.match(/AI:([\s\S]*?)(?:User:|$)/);
+      response = aiResponseMatch ? aiResponseMatch[1].trim() : generatedText;
+    } else if (huggingFaceResponse.data?.generated_text) {
+      // Handle alternate response format
+      const generatedText = huggingFaceResponse.data.generated_text;
+      // Use [\s\S] instead of . with s flag for better compatibility
+      const aiResponseMatch = generatedText.match(/AI:([\s\S]*?)(?:User:|$)/);
+      response = aiResponseMatch ? aiResponseMatch[1].trim() : generatedText;
+    }
+  } catch (error) {
+    console.error("Error with HuggingFace API:", error);
+    if (axios.isAxiosError(error) && error.response) {
+      // If the error suggests the model is loading, let the user know
+      if (error.response.status === 503 && error.response.data?.error?.includes("Loading")) {
+        return "The AI model is currently loading. This is a free service and might take a moment to initialize. Please try again in a few seconds.";
+      }
+      throw new Error(`HuggingFace API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
     } else {
       throw error;
     }

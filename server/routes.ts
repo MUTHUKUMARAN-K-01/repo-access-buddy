@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const messageData = insertChatMessageSchema.parse(req.body);
       // Get the AI model type from the request (defaulting to OpenAI if not specified)
-      const modelType = (req.body.modelType as 'openai' | 'deepseek') || 'openai';
+      const modelType = (req.body.modelType as 'openai' | 'deepseek' | 'huggingface') || 'openai';
 
       // Get or create default user if none exists
       let user = await storage.getUser(messageData.userId);
@@ -195,9 +195,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       let aiResponse: string;
-      // Due to API quota limitations, using the local fallback response generator
-      console.log(`Using local fallback response generator instead of ${modelType} due to API quota limitations`);
-      aiResponse = generateLocalFinanceResponse(messageData.message);
+      
+      try {
+        // Use the appropriate model based on the request
+        console.log(`Generating response using ${modelType} model`);
+        
+        // Actually use the AI models instead of local fallback
+        aiResponse = await generateFinanceResponse(
+          messageData.message,
+          chatHistory,
+          modelType
+        );
+      } catch (error) {
+        console.error(`Error with ${modelType} API:`, error);
+        // Fall back to local response generator if the API call fails
+        console.log(`Falling back to local response generator due to API error`);
+        aiResponse = generateLocalFinanceResponse(messageData.message);
+      }
 
       // Save AI response
       const aiMessage = await storage.createChatMessage({
