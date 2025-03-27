@@ -162,6 +162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   router.post("/chat", async (req: Request, res: Response) => {
     try {
       const messageData = insertChatMessageSchema.parse(req.body);
+      // Get the AI model type from the request (defaulting to OpenAI if not specified)
+      const modelType = (req.body.modelType as 'openai' | 'deepseek') || 'openai';
 
       // Get or create default user if none exists
       let user = await storage.getUser(messageData.userId);
@@ -188,11 +190,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let aiResponse: string;
       try {
-        // Generate AI response using OpenAI integration
-        aiResponse = await generateFinanceResponse(messageData.message, chatHistory);
+        // Log which AI model is being used
+        console.log(`Using ${modelType} model for chat response`);
+        
+        // Generate AI response using the selected model
+        aiResponse = await generateFinanceResponse(messageData.message, chatHistory, modelType);
       } catch (aiError) {
-        console.error("Error generating AI response:", aiError);
-        // Fallback to the local response generator if OpenAI fails
+        console.error(`Error generating AI response with ${modelType}:`, aiError);
+        // Fallback to the local response generator if AI integration fails
         aiResponse = generateLocalFinanceResponse(messageData.message);
       }
 

@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useChat } from "@/hooks/use-chat";
+import { useChat, AIModel } from "@/hooks/use-chat";
 import { Send } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 type MessageType = {
   id: string;
@@ -12,7 +14,7 @@ type MessageType = {
 };
 
 export default function FinanceChat() {
-  const { messages, isLoading, sendMessage } = useChat();
+  const { messages, isLoading, sendMessage, selectedModel, changeModel } = useChat();
   const [newMessage, setNewMessage] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -22,15 +24,39 @@ export default function FinanceChat() {
     sendMessage(newMessage);
     setNewMessage("");
   };
+  
+  const handleModelToggle = () => {
+    // Toggle between OpenAI and Deepseek
+    changeModel(selectedModel === 'openai' ? 'deepseek' : 'openai');
+  };
 
   return (
     <Card className="w-full">
       <div className="p-6 bg-blue-50 border-b border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-800 flex items-center">
-          <span className="material-icons mr-2">chat</span>
-          Chat with FinanceGuru
-        </h3>
-        <p className="text-gray-600 mt-1">Ask any questions about your personal finances</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+              <span className="material-icons mr-2">chat</span>
+              Chat with FinanceGuru
+            </h3>
+            <p className="text-gray-600 mt-1">Ask any questions about your personal finances</p>
+          </div>
+          
+          {/* Model Selector */}
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="model-toggle" className={selectedModel === 'openai' ? 'text-blue-600 font-medium' : 'text-gray-500'}>
+              OpenAI
+            </Label>
+            <Switch 
+              id="model-toggle" 
+              checked={selectedModel === 'deepseek'}
+              onCheckedChange={handleModelToggle}
+            />
+            <Label htmlFor="model-toggle" className={selectedModel === 'deepseek' ? 'text-blue-600 font-medium' : 'text-gray-500'}>
+              Deepseek
+            </Label>
+          </div>
+        </div>
       </div>
       
       {/* Chat Messages */}
@@ -105,10 +131,16 @@ export default function FinanceChat() {
             <Send className="h-5 w-5" />
           </Button>
         </form>
-        <p className="text-xs text-gray-500 mt-2">
-          <span className="material-icons text-xs align-middle">info</span>
-          Remember: This advice is informational only. For personalized legal advice, please consult a certified financial planner.
-        </p>
+        <div className="flex justify-between mt-2">
+          <p className="text-xs text-gray-500">
+            <span className="material-icons text-xs align-middle">info</span>
+            Remember: This advice is informational only. For personalized legal advice, please consult a certified financial planner.
+          </p>
+          <p className="text-xs text-gray-500">
+            <span className="material-icons text-xs align-middle">smart_toy</span>
+            Using {selectedModel === 'openai' ? 'OpenAI' : 'Deepseek'} model
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

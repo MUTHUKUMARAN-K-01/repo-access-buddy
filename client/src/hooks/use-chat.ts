@@ -3,9 +3,12 @@ import { useState } from "react";
 import { nanoid } from "nanoid";
 import { apiRequest } from "../lib/queryClient";
 
+export type AIModel = 'openai' | 'deepseek';
+
 export function useChat() {
   const [messages, setMessages] = useState<{ id: string; text: string; isUser: boolean; }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<AIModel>('openai');
 
   // Using a default user ID of 1 for demonstration
   const userId = 1;
@@ -24,7 +27,8 @@ export function useChat() {
       const response = await apiRequest('POST', '/api/chat', {
         userId,
         message: text,
-        isUserMessage: 1
+        isUserMessage: 1,
+        modelType: selectedModel // Include the selected model type
       });
 
       if (!response.ok) {
@@ -45,9 +49,16 @@ export function useChat() {
     }
   };
 
+  // Function to change the AI model
+  const changeModel = (model: AIModel) => {
+    setSelectedModel(model);
+  };
+
   return {
     messages,
     isLoading,
-    sendMessage
+    sendMessage,
+    selectedModel,
+    changeModel
   };
 }
