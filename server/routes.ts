@@ -162,8 +162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   router.post("/chat", async (req: Request, res: Response) => {
     try {
       const messageData = insertChatMessageSchema.parse(req.body);
-      // Get the AI model type from the request (defaulting to OpenAI if not specified)
-      const modelType = (req.body.modelType as 'openai' | 'deepseek' | 'huggingface') || 'openai';
+      // Get the AI model type from the request (defaulting to Local if not specified)
+      const modelType = (req.body.modelType as 'openai' | 'deepseek' | 'huggingface' | 'local') || 'local';
 
       // Get or create default user if none exists
       let user = await storage.getUser(messageData.userId);

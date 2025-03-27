@@ -14,7 +14,7 @@ const openai = new OpenAI({
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
 // AI model configuration
-export type AIModel = 'openai' | 'deepseek' | 'huggingface';
+export type AIModel = 'openai' | 'deepseek' | 'huggingface' | 'local';
 
 // System prompt for financial advisor role
 const SYSTEM_PROMPT = `
@@ -37,36 +37,39 @@ acknowledge your limitations and suggest consulting a certified financial profes
  * Generate a response to a user's finance question using the specified AI model
  * @param userMessage The user's finance-related question or message
  * @param chatHistory Previous messages for context (optional)
- * @param model The AI model to use (openai or deepseek)
+ * @param model The AI model to use (local, openai, deepseek, or huggingface)
  * @returns AI-generated response
  */
 export async function generateFinanceResponse(
   userMessage: string, 
   chatHistory: string[] = [],
-  model: AIModel = 'openai'
+  model: AIModel = 'local'
 ): Promise<string> {
+  // If model is explicitly set to local or if it's a simple greeting/short message,
+  // use the local response generator directly without trying external APIs
+  if (model === 'local' || 
+      userMessage.toLowerCase().match(/^(hi|hello|hey|howdy|greetings)(\s|$|[!?.,])/)) {
+    return generateLocalFinanceResponse(userMessage);
+  }
+  
   try {
     // Use the appropriate model based on the parameter
     if (model === 'deepseek') {
       return await generateDeepseekResponse(userMessage, chatHistory);
     } else if (model === 'huggingface') {
       return await generateHuggingFaceResponse(userMessage, chatHistory);
-    } else {
+    } else if (model === 'openai') {
       return await generateOpenAIResponse(userMessage, chatHistory);
+    } else {
+      // Default to local response generator
+      return generateLocalFinanceResponse(userMessage);
     }
   } catch (error) {
     console.error("Error generating AI response:", error);
     
-    // Return a helpful message with the specific error
-    if (error instanceof Error) {
-      if (error.message.includes("API key")) {
-        return "API key error. Please check your API key configuration.";
-      }
-      return `I'm having trouble generating a response: ${error.message}`;
-    }
-    
-    // Generic fallback
-    return "I'm having trouble connecting to my knowledge base right now. Please try again in a moment.";
+    // Always fall back to the local response generator when APIs fail
+    console.log("Falling back to local response generator");
+    return generateLocalFinanceResponse(userMessage);
   }
 }
 
@@ -351,6 +354,31 @@ export function generateLocalFinanceResponse(userMessage: string): string {
     return "Increasing your income can accelerate your financial goals. Consider these options:\n\n1. Freelancing in your professional field\n2. Sharing economy (Uber, Airbnb, etc.)\n3. Online marketplaces for skills (teaching, writing, design)\n4. Creating digital products (courses, ebooks, printables)\n5. Monetizing a hobby or passion project\n\nWhen evaluating side hustles, consider the time commitment, upfront costs, and potential return. The best side hustle aligns with your skills and interests while fitting into your schedule.";
   }
   
+  // Personal financial planning
+  if (message.includes("plan") || message.includes("goals") || message.includes("financial plan") || message.includes("roadmap")) {
+    return "Creating a personal financial plan is essential for achieving your goals. Here's how to get started:\n\n1. Define your financial goals (short-term, medium-term, and long-term)\n2. Assess your current financial situation (income, expenses, assets, liabilities)\n3. Create a budget that aligns with your goals\n4. Build an emergency fund (3-6 months of expenses)\n5. Pay off high-interest debt\n6. Save for retirement through tax-advantaged accounts\n7. Invest according to your timeline and risk tolerance\n8. Review and adjust your plan regularly\n\nA comprehensive financial plan serves as your roadmap to financial security and should evolve as your life circumstances change.";
+  }
+
+  // Cryptocurrency/blockchain questions
+  if (message.includes("crypto") || message.includes("bitcoin") || message.includes("ethereum") || message.includes("blockchain") || message.includes("nft")) {
+    return "Cryptocurrencies are highly volatile investments that should only be considered as a small portion of a well-diversified portfolio. Here's what to know:\n\n1. Only invest money you can afford to lose completely\n2. Consider cryptocurrencies as speculative, high-risk investments\n3. Research thoroughly before investing (tokenomics, use cases, team)\n4. Use reputable exchanges with strong security measures\n5. Consider storage options carefully (hot wallets vs. cold storage)\n6. Be aware of tax implications of crypto transactions\n\nCryptocurrencies are still an emerging asset class with significant regulatory uncertainty. They should typically represent no more than 5% of your investment portfolio, if any.";
+  }
+
+  // Economic concerns (inflation, recession)
+  if (message.includes("inflation") || message.includes("recession") || message.includes("economy") || message.includes("economic")) {
+    return "Economic conditions like inflation and recessions affect your finances in important ways. Here's how to prepare:\n\n1. During inflation:\n   - Focus on increasing your income\n   - Invest in assets that historically outpace inflation (stocks, real estate)\n   - Consider I-bonds or TIPS for inflation-protected savings\n   - Review your budget regularly as prices increase\n\n2. During recessions:\n   - Build a larger emergency fund (6-12 months of expenses)\n   - Secure multiple income streams if possible\n   - Reduce discretionary spending\n   - Avoid taking on new debt\n   - Continue investing regularly (dollar-cost averaging)\n\nRemember that economic cycles are normal. A diversified financial plan should account for both good and challenging economic conditions.";
+  }
+
+  // Children/family financial planning
+  if (message.includes("child") || message.includes("children") || message.includes("kid") || message.includes("college") || message.includes("education fund") || message.includes("529")) {
+    return "Financial planning for children and education requires early preparation. Consider these strategies:\n\n1. Education funding options:\n   - 529 College Savings Plans (tax-advantaged growth for education)\n   - Coverdell Education Savings Accounts (for K-12 and college expenses)\n   - UTMA/UGMA custodial accounts (more flexible but less tax advantages)\n   - Roth IRAs (can be used for education without penalty)\n\n2. When to start: As early as possible, ideally when your child is born\n\n3. How much to save: Target at least 1/3 of expected college costs\n\n4. Beyond education:\n   - Consider life insurance to protect your family\n   - Create or update your will and guardianship arrangements\n   - Teach children about money management from an early age\n\nRemember that while education is important, prioritize your retirement savings first. Your children can borrow for college, but you can't borrow for retirement.";
+  }
+
+  // Career and income growth
+  if (message.includes("career") || message.includes("salary") || message.includes("income") || message.includes("negotiate") || message.includes("raise") || message.includes("promotion")) {
+    return "Growing your income is one of the most powerful ways to improve your finances. Consider these strategies:\n\n1. In your current job:\n   - Document your achievements and value-add metrics\n   - Research market rates for your position and experience level\n   - Prepare for performance reviews with specific accomplishments\n   - Request additional responsibilities that can lead to advancement\n\n2. Career development:\n   - Invest in skills that are in high demand in your industry\n   - Build your professional network both inside and outside your company\n   - Consider certifications or additional education if ROI is positive\n   - Look for lateral moves that open new career paths\n\n3. Negotiation tips:\n   - Focus on your value rather than your needs\n   - Practice your pitch and anticipate objections\n   - Consider the entire compensation package, not just salary\n   - Be willing to walk away if necessary\n\nRemember that job-hopping strategically (every 2-4 years) often results in larger income increases than staying with one employer long-term.";
+  }
+
   // Generic response for other questions
   return "Thank you for your question! As your financial assistant, I can provide guidance on budgeting, saving, investing, debt management, retirement planning, and many other personal finance topics. To give you the most helpful advice, could you provide a bit more detail about your specific situation or what you're trying to achieve financially?";
 }

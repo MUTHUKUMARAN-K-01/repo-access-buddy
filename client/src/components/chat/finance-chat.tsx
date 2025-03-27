@@ -53,6 +53,15 @@ export default function FinanceChat() {
             <div className="flex items-center border rounded-md p-1">
               <Button
                 type="button"
+                variant={selectedModel === 'local' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => changeModel('local')}
+                className="text-xs px-2 py-1"
+              >
+                Local
+              </Button>
+              <Button
+                type="button"
                 variant={selectedModel === 'openai' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => changeModel('openai')}
@@ -164,7 +173,8 @@ export default function FinanceChat() {
             <span className="material-icons text-xs align-middle">smart_toy</span>
             Using {
               selectedModel === 'openai' ? 'OpenAI' : 
-              selectedModel === 'deepseek' ? 'Deepseek' : 'HuggingFace'
+              selectedModel === 'deepseek' ? 'Deepseek' : 
+              selectedModel === 'huggingface' ? 'HuggingFace' : 'Local'
             } model
           </p>
         </div>

@@ -3,12 +3,12 @@ import { useState } from "react";
 import { nanoid } from "nanoid";
 import { apiRequest } from "../lib/queryClient";
 
-export type AIModel = 'openai' | 'deepseek' | 'huggingface';
+export type AIModel = 'openai' | 'deepseek' | 'huggingface' | 'local';
 
 export function useChat() {
   const [messages, setMessages] = useState<{ id: string; text: string; isUser: boolean; }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<AIModel>('openai');
+  const [selectedModel, setSelectedModel] = useState<AIModel>('local');
 
   // Using a default user ID of 4 for demonstration (user that was created in the database)
   const userId = 4;
