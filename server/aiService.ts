@@ -221,9 +221,10 @@ ${context ? context + "\n" : ""}User: ${userMessage}
 AI:`;
 
   try {
-    // Make API request to HuggingFace Inference API (no auth required for this model)
+    // Make API request to HuggingFace Inference API
+    // Using a model that works with the free endpoint without authentication
     const huggingFaceResponse = await axios.post(
-      "https://api-inference.huggingface.co/models/facebook/opt-2.7b",
+      "https://api-inference.huggingface.co/models/Xenova/LaMini-GPT-124M",
       {
         inputs: prompt,
         parameters: {
@@ -231,6 +232,7 @@ AI:`;
           temperature: 0.7,
           top_p: 0.95,
           do_sample: true,
+          return_full_text: false
         },
       },
       {
