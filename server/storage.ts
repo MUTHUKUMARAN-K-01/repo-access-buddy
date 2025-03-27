@@ -234,7 +234,7 @@ export class PostgresStorage implements IStorage {
       return {
         id: result[0].id,
         username: result[0].username,
-        password: result[0].password, // Column is actually 'password' in the database
+        password: result[0].password_hash, // Column is 'password_hash' in the database
         email: result[0].email,
         createdAt: result[0].created_at
       };
@@ -259,7 +259,7 @@ export class PostgresStorage implements IStorage {
       return {
         id: result[0].id,
         username: result[0].username,
-        password: result[0].password,
+        password: result[0].password_hash, // Column is 'password_hash' in the database
         email: result[0].email,
         createdAt: result[0].created_at
       };
@@ -282,7 +282,7 @@ export class PostgresStorage implements IStorage {
       return {
         id: result[0].id,
         username: result[0].username,
-        password: result[0].password, // Column is actually 'password' in the database
+        password: result[0].password_hash, // Column is 'password_hash' in the database
         email: result[0].email,
         createdAt: result[0].created_at
       };
@@ -295,8 +295,9 @@ export class PostgresStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
       // Use direct SQL to ensure column names match the database
+      // Note: In the schema, the field is password, but in DB it's password_hash
       const result = await sql`
-        INSERT INTO users (username, email, password) 
+        INSERT INTO users (username, email, password_hash) 
         VALUES (${insertUser.username}, ${insertUser.email}, ${insertUser.password}) 
         RETURNING *
       `;
@@ -306,10 +307,11 @@ export class PostgresStorage implements IStorage {
       }
       
       // Map database row to our User type, matching our schema
+      // Handle mismatched column names between schema and DB
       return {
         id: result[0].id,
         username: result[0].username,
-        password: result[0].password,
+        password: result[0].password_hash, // DB uses password_hash, schema uses password
         email: result[0].email,
         createdAt: result[0].created_at
       };
