@@ -159,7 +159,7 @@ async function generateDeepseekResponse(userMessage: string, chatHistory: string
     const deepseekResponse = await axios.post(
       DEEPSEEK_API_URL,
       {
-        model: "llama-3.1-sonar-small-128k-online", // Using Deepseek's recommended model
+        model: "deepseek-chat", // Using Deepseek's basic model
         messages: messages,
         temperature: 0.7,
         max_tokens: 500,
