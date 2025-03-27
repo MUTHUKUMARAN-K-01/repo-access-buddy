@@ -192,34 +192,79 @@ async function generateDeepseekResponse(userMessage: string, chatHistory: string
 }
 
 /**
- * Simple fallback function that returns predefined responses for common financial questions
- * Uses basic keyword matching - only used if the API integration fails
+ * Enhanced fallback function that returns detailed responses for common financial questions
+ * Uses keyword matching to provide relevant financial advice without requiring external APIs
  * @param userMessage User's question
- * @returns Predefined response based on keywords in the question
+ * @returns Detailed response based on keywords in the question
  */
 export function generateLocalFinanceResponse(userMessage: string): string {
   const message = userMessage.toLowerCase();
   
+  // Greeting or introduction
+  if (message.includes("hi") || message.includes("hello") || message.includes("hey") || message.length < 5) {
+    return "Hello! I'm FinanceGuru, your personal finance assistant. I can help you with budgeting, investing, debt management, and achieving your financial goals. How can I assist you today?";
+  }
+  
   // Budget-related questions
-  if (message.includes("budget") || message.includes("spending") || message.includes("expenses")) {
-    return "To create an effective budget, track your income and expenses for a month, categorize spending, set realistic goals, and use the 50/30/20 rule: 50% for needs, 30% for wants, and 20% for savings and debt repayment.";
+  if (message.includes("budget") || message.includes("spending") || message.includes("expenses") || message.includes("track")) {
+    return "Creating a solid budget is the foundation of financial success! Here's how to get started:\n\n1. Track all income and expenses for at least a month\n2. Categorize your spending (housing, food, transportation, etc.)\n3. Follow the 50/30/20 rule: allocate 50% for needs, 30% for wants, and 20% for savings and debt repayment\n4. Use budgeting apps or spreadsheets to automate tracking\n5. Review and adjust your budget monthly\n\nThe key to successful budgeting is consistency and regular reviews. What specific aspect of budgeting are you struggling with?";
   }
   
   // Saving-related questions
-  if (message.includes("save") || message.includes("saving") || message.includes("emergency fund")) {
-    return "For savings, aim to build an emergency fund covering 3-6 months of expenses. Automate transfers to a high-yield savings account on payday, and consider setting specific goals with deadlines to stay motivated.";
+  if (message.includes("save") || message.includes("saving") || message.includes("emergency fund") || message.includes("emergency")) {
+    return "Building savings is critical for financial security. Here's my advice:\n\n1. Start with an emergency fund covering 3-6 months of essential expenses\n2. Keep your emergency fund in a high-yield savings account for easy access\n3. Set up automatic transfers on payday to make saving effortless\n4. Create specific savings goals with deadlines (vacation, down payment, etc.)\n5. Once your emergency fund is complete, direct savings toward other financial goals\n\nRemember: Even small, consistent contributions add up significantly over time thanks to compound interest.";
   }
   
   // Debt-related questions
-  if (message.includes("debt") || message.includes("loan") || message.includes("credit card")) {
-    return "To tackle debt effectively, list all debts with interest rates, focus on high-interest debt first (debt avalanche) or start with small balances for quick wins (debt snowball). Always pay more than the minimum payment when possible.";
+  if (message.includes("debt") || message.includes("loan") || message.includes("credit card") || message.includes("mortgage") || message.includes("student loan")) {
+    return "Managing debt effectively is crucial for your financial health. Here's a step-by-step approach:\n\n1. List all debts with their interest rates, minimum payments, and balances\n2. Consider these two popular payoff strategies:\n   - Debt Avalanche: Focus on highest-interest debt first (saves the most money)\n   - Debt Snowball: Pay off smallest balances first (provides psychological wins)\n3. Always pay more than the minimum payment when possible\n4. Consider balance transfers or debt consolidation for high-interest debt\n5. Avoid taking on new debt while paying off existing obligations\n\nWhat types of debt are you currently dealing with? I can provide more specific advice based on your situation.";
   }
   
   // Investment-related questions
-  if (message.includes("invest") || message.includes("stock") || message.includes("retirement")) {
-    return "For beginning investors, start with your employer's 401(k) if available, especially if they match contributions. Consider low-cost index funds for diversification, and look into Roth IRAs for tax-advantaged retirement savings.";
+  if (message.includes("invest") || message.includes("stock") || message.includes("bond") || message.includes("retirement") || message.includes("401k") || message.includes("ira")) {
+    return "Investing is how you build wealth long-term. Here are key principles to get started:\n\n1. Before investing, ensure you have an emergency fund and have addressed high-interest debt\n2. Take advantage of employer-matched retirement accounts like 401(k)s first\n3. Consider tax-advantaged accounts like Roth or Traditional IRAs\n4. For most people, low-cost index funds provide appropriate diversification\n5. Set an asset allocation based on your risk tolerance and time horizon\n6. Invest regularly regardless of market conditions (dollar-cost averaging)\n\nRemember that investing is for long-term goals, typically 5+ years. Short-term needs should be kept in savings accounts.";
+  }
+  
+  // Real estate or home buying
+  if (message.includes("house") || message.includes("home") || message.includes("mortgage") || message.includes("property") || message.includes("real estate")) {
+    return "Buying a home is one of the biggest financial decisions you'll make. Here's guidance:\n\n1. Save for a down payment of at least 20% to avoid PMI (private mortgage insurance)\n2. Get pre-approved for a mortgage before house hunting\n3. Budget for total housing costs (mortgage, property taxes, insurance, maintenance)\n4. The general rule is that housing shouldn't exceed 28% of your gross income\n5. Consider additional costs like closing costs, moving expenses, and new furniture\n6. Think about how long you plan to stay in the home - buying usually makes sense if you'll stay 5+ years\n\nAre you currently saving for a home or already in the process of buying?";
+  }
+  
+  // Credit score questions
+  if (message.includes("credit score") || message.includes("credit report") || message.includes("credit history") || message.includes("fico")) {
+    return "Your credit score has a huge impact on your financial options. Here's how to maintain a healthy score:\n\n1. Pay all bills on time - payment history is 35% of your FICO score\n2. Keep credit utilization below 30% of available credit (lower is better)\n3. Don't close old credit accounts - length of credit history matters\n4. Limit applications for new credit to avoid hard inquiries\n5. Regularly check your credit reports for errors at annualcreditreport.com\n\nScore ranges: 300-579 (Poor), 580-669 (Fair), 670-739 (Good), 740-799 (Very Good), 800-850 (Excellent). Most lenders consider 740+ to be excellent.";
+  }
+  
+  // Tax planning
+  if (message.includes("tax") || message.includes("taxes") || message.includes("deduction") || message.includes("write-off") || message.includes("irs")) {
+    return "Tax planning can save you significant money. Consider these strategies:\n\n1. Maximize tax-advantaged accounts like 401(k)s, IRAs, and HSAs\n2. Keep track of deductible expenses throughout the year\n3. Consider bunching itemized deductions in certain years\n4. Harvest investment losses to offset gains\n5. Contribute to a 529 plan for education expenses\n\nRemember that tax laws change frequently, so consult with a tax professional for personalized advice based on your specific situation.";
+  }
+  
+  // Retirement planning
+  if (message.includes("retire") || message.includes("retirement") || message.includes("401k") || message.includes("ira") || message.includes("pension")) {
+    return "Planning for retirement is essential for long-term financial security. Here's how to prepare:\n\n1. Start saving as early as possible to benefit from compound growth\n2. Aim to save 15% of your income for retirement (including employer matches)\n3. Maximize tax-advantaged accounts in this order:\n   - 401(k) or 403(b) up to employer match\n   - HSA if eligible (triple tax advantage)\n   - Roth IRA or Traditional IRA\n   - Remainder in 401(k) or taxable accounts\n4. Adjust your asset allocation to become more conservative as you approach retirement\n5. Consider working with a fee-only financial advisor for personalized retirement planning\n\nThe 4% rule suggests you can withdraw 4% of your retirement savings annually with minimal risk of running out of money over a 30-year retirement.";
+  }
+  
+  // Insurance questions
+  if (message.includes("insurance") || message.includes("insure") || message.includes("coverage") || message.includes("policy") || message.includes("premium")) {
+    return "Insurance protects your financial future from catastrophic events. Here are key types to consider:\n\n1. Health insurance - Essential for everyone to avoid medical bankruptcy\n2. Auto insurance - Required by law in most places\n3. Home/renters insurance - Protects your dwelling and possessions\n4. Life insurance - Important if others depend on your income\n5. Disability insurance - Replaces income if you can't work\n6. Umbrella policy - Provides additional liability protection\n\nFocus on high-deductible policies that protect against financial disasters, not small expenses you could cover from your emergency fund.";
+  }
+  
+  // Financial independence / FIRE
+  if (message.includes("financial independence") || message.includes("early retirement") || message.includes("fire movement") || message.includes("financial freedom")) {
+    return "The FIRE (Financial Independence, Retire Early) movement focuses on aggressive saving and investing to achieve financial freedom sooner. Core principles include:\n\n1. Increase your savings rate dramatically (often 50-70% of income)\n2. Reduce expenses by embracing frugality and minimalism\n3. Invest in low-cost index funds for long-term growth\n4. Build passive income streams through investments\n5. Use the 4% rule to determine your FIRE number (25x annual expenses)\n\nThere are different FIRE approaches: Lean FIRE (extreme frugality), Fat FIRE (higher spending level), and Barista FIRE (part-time work with partial financial independence). Which approach interests you most?";
+  }
+  
+  // Student loans
+  if (message.includes("student loan") || message.includes("college debt") || message.includes("education loan") || message.includes("student debt")) {
+    return "Managing student loan debt requires a strategic approach:\n\n1. Know your loans - federal vs private, interest rates, terms\n2. Explore repayment options for federal loans (income-driven, extended plans)\n3. Consider refinancing private loans if you can qualify for lower rates\n4. Look into loan forgiveness programs if you work in public service\n5. Make extra payments toward higher-interest loans when possible\n6. Stay informed about policy changes that might affect student loan repayment\n\nFederal loans offer more protections and flexible repayment options than private loans, so consider this carefully before refinancing federal loans.";
+  }
+  
+  // Side hustles or additional income
+  if (message.includes("side hustle") || message.includes("extra income") || message.includes("passive income") || message.includes("earn more")) {
+    return "Increasing your income can accelerate your financial goals. Consider these options:\n\n1. Freelancing in your professional field\n2. Sharing economy (Uber, Airbnb, etc.)\n3. Online marketplaces for skills (teaching, writing, design)\n4. Creating digital products (courses, ebooks, printables)\n5. Monetizing a hobby or passion project\n\nWhen evaluating side hustles, consider the time commitment, upfront costs, and potential return. The best side hustle aligns with your skills and interests while fitting into your schedule.";
   }
   
   // Generic response for other questions
-  return "I can help with budgeting, saving, debt management, and investing. Could you provide more details about your financial situation or question?";
+  return "Thank you for your question! As your financial assistant, I can provide guidance on budgeting, saving, investing, debt management, retirement planning, and many other personal finance topics. To give you the most helpful advice, could you provide a bit more detail about your specific situation or what you're trying to achieve financially?";
 }

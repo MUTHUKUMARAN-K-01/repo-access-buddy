@@ -195,17 +195,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       let aiResponse: string;
-      try {
-        // Log which AI model is being used
-        console.log(`Using ${modelType} model for chat response`);
-        
-        // Generate AI response using the selected model
-        aiResponse = await generateFinanceResponse(messageData.message, chatHistory, modelType);
-      } catch (aiError) {
-        console.error(`Error generating AI response with ${modelType}:`, aiError);
-        // Fallback to the local response generator if AI integration fails
-        aiResponse = generateLocalFinanceResponse(messageData.message);
-      }
+      // Due to API quota limitations, using the local fallback response generator
+      console.log(`Using local fallback response generator instead of ${modelType} due to API quota limitations`);
+      aiResponse = generateLocalFinanceResponse(messageData.message);
 
       // Save AI response
       const aiMessage = await storage.createChatMessage({
