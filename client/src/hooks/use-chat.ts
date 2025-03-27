@@ -10,8 +10,8 @@ export function useChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<AIModel>('openai');
 
-  // Using a default user ID of 1 for demonstration
-  const userId = 1;
+  // Using a default user ID of 4 for demonstration (user that was created in the database)
+  const userId = 4;
 
   const sendMessage = async (text: string) => {
     // Optimistically add user message to state
