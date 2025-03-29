@@ -8,7 +8,13 @@ import {
   insertUserSchema 
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
-import { generateFinanceResponse, generateLocalFinanceResponse, AIModel, openRouterModels } from "./aiService";
+import { 
+  generateFinanceResponse, 
+  generateLocalFinanceResponse, 
+  AIModel, 
+  fetchOpenRouterModels,
+  fallbackOpenRouterModels
+} from "./aiService";
 import { getStockQuote, getHistoricalData, searchStocks, getCompanyOverview } from "./stockService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -160,13 +166,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get available AI models for the chat
-  router.get("/ai-models", (req: Request, res: Response) => {
-    res.status(200).json({
-      models: [
-        { id: 'local', name: 'Local AI (No API)' },
-        ...openRouterModels
-      ]
-    });
+  router.get("/ai-models", async (req: Request, res: Response) => {
+    try {
+      // Check if OpenRouter API key is available
+      const hasApiKey = !!process.env.OPENROUTER_API_KEY;
+      
+      if (hasApiKey) {
+        // Fetch all models from OpenRouter
+        const fetchedModels = await fetchOpenRouterModels();
+        
+        // Return local model + all OpenRouter models
+        res.status(200).json({
+          hasApiKey,
+          models: [
+            { id: 'local', name: 'Local AI (No API)' },
+            ...fetchedModels
+          ]
+        });
+      } else {
+        // If no API key, only return local model
+        res.status(200).json({
+          hasApiKey,
+          models: [
+            { id: 'local', name: 'Local AI (No API)' }
+          ]
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching AI models:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch AI models",
+        hasApiKey: !!process.env.OPENROUTER_API_KEY,
+        models: [{ id: 'local', name: 'Local AI (No API)' }]
+      });
+    }
   });
 
   // Post a new chat message

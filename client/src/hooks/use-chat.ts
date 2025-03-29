@@ -8,6 +8,8 @@ export type AIModel = 'openrouter' | 'local';
 export interface AIModelOption {
   id: string;
   name: string;
+  isFree?: boolean;
+  category?: string;
 }
 
 export function useChat() {
@@ -18,7 +20,11 @@ export function useChat() {
   const [availableModels, setAvailableModels] = useState<AIModelOption[]>([
     { id: 'local', name: 'Local AI (No API)' }
   ]);
+  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
+  const [modelCategories, setModelCategories] = useState<string[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [showFreeModelsOnly, setShowFreeModelsOnly] = useState<boolean>(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   // Using a default user ID of 4 for demonstration (user that was created in the database)
   const userId = 4;
@@ -34,6 +40,31 @@ export function useChat() {
         }
         const data = await response.json();
         setAvailableModels(data.models);
+        setHasApiKey(data.hasApiKey);
+        
+        // Extract unique categories for filtering
+        if (data.models && data.models.length > 1) {
+          const categories = new Set<string>(
+            data.models
+              .filter((model: AIModelOption) => model.id !== 'local' && model.category)
+              .map((model: AIModelOption) => model.category || 'Other')
+          );
+          setModelCategories(['All', ...Array.from(categories)]);
+        }
+        
+        // Set default OpenRouter model to a free one if available
+        if (data.models.length > 1) {
+          const freeModel = data.models.find((m: AIModelOption) => m.id !== 'local' && m.isFree);
+          if (freeModel) {
+            setSelectedOpenRouterModel(freeModel.id);
+          } else if (data.models.length > 1) {
+            // Or just select the first non-local model
+            const firstNonLocal = data.models.find((m: AIModelOption) => m.id !== 'local');
+            if (firstNonLocal) {
+              setSelectedOpenRouterModel(firstNonLocal.id);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error fetching AI models:', error);
       } finally {
@@ -43,6 +74,16 @@ export function useChat() {
     
     fetchModels();
   }, []);
+
+  // Filtered models based on selected category and free-only setting
+  const filteredModels = availableModels.filter(model => {
+    if (model.id === 'local') return true;
+    
+    const categoryMatch = selectedCategory === 'All' || model.category === selectedCategory;
+    const freeMatch = !showFreeModelsOnly || model.isFree;
+    
+    return categoryMatch && freeMatch;
+  });
 
   const sendMessage = async (text: string) => {
     // Optimistically add user message to state
@@ -90,6 +131,16 @@ export function useChat() {
   const changeOpenRouterModel = (modelId: string) => {
     setSelectedOpenRouterModel(modelId);
   };
+  
+  // Toggle showing only free models
+  const toggleShowFreeModelsOnly = () => {
+    setShowFreeModelsOnly(prev => !prev);
+  };
+  
+  // Change category filter
+  const changeCategory = (category: string) => {
+    setSelectedCategory(category);
+  };
 
   return {
     messages,
@@ -98,8 +149,15 @@ export function useChat() {
     selectedModel,
     changeModel,
     availableModels,
+    filteredModels,
     isLoadingModels,
     selectedOpenRouterModel,
-    changeOpenRouterModel
+    changeOpenRouterModel,
+    hasApiKey,
+    showFreeModelsOnly,
+    toggleShowFreeModelsOnly,
+    modelCategories,
+    selectedCategory,
+    changeCategory
   };
 }

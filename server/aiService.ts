@@ -6,23 +6,130 @@ dotenv.config();
 
 // OpenRouter API configuration
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
 // AI model configuration
 export type AIModel = 'openrouter' | 'local';
 
-// OpenRouter available models
-export const openRouterModels = [
+// Model option interface
+export interface AIModelOption {
+  id: string;
+  name: string;
+  isFree?: boolean;
+  category?: string;
+}
+
+// Fallback OpenRouter models in case the API request fails
+export const fallbackOpenRouterModels: AIModelOption[] = [
   { id: 'anthropic/claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
   { id: 'anthropic/claude-3-opus', name: 'Claude 3 Opus' },
   { id: 'anthropic/claude-3-sonnet', name: 'Claude 3 Sonnet' },
-  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku' },
+  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', isFree: true },
   { id: 'google/gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-  { id: 'meta-llama/llama-3-70b-instruct', name: 'Llama 3 70B' },
+  { id: 'meta-llama/llama-3-70b-instruct', name: 'Llama 3 70B', isFree: true },
   { id: 'mistralai/mistral-large', name: 'Mistral Large' },
-  { id: 'mistralai/mistral-medium', name: 'Mistral Medium' },
+  { id: 'mistralai/mistral-medium', name: 'Mistral Medium', isFree: true },
   { id: 'openai/gpt-4o', name: 'GPT-4o' },
   { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo' }
 ];
+
+// Function to fetch all available models from OpenRouter
+export async function fetchOpenRouterModels(): Promise<AIModelOption[]> {
+  if (!process.env.OPENROUTER_API_KEY) {
+    console.log("OpenRouter API key not configured. Returning fallback model list.");
+    return fallbackOpenRouterModels;
+  }
+  
+  try {
+    const response = await axios.get(OPENROUTER_MODELS_URL, {
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://replit.com/",
+        "X-Title": "FinanceGuru App"
+      }
+    });
+    
+    if (response.data && Array.isArray(response.data.data)) {
+      // Transform the response into our AIModelOption format
+      const models = response.data.data.map((model: any) => {
+        // Get provider name from model ID (first segment before slash)
+        const providerRaw = model.id.split('/')[0];
+        const provider = providerRaw.charAt(0).toUpperCase() + providerRaw.slice(1);
+        
+        // Determine if the model is free based on pricing info
+        const isPricingFree = model.pricing?.prompt === 0 && model.pricing?.completion === 0;
+        
+        // Free models based on heuristic if pricing info is not available
+        const isFreeByHeuristic = 
+          !model.id.includes('gpt-4') && 
+          !model.id.includes('claude-3') && 
+          !model.id.includes('claude-3.5') && 
+          (model.id.includes('mistral-small') || 
+           model.id.includes('llama-3-8b') || 
+           model.id.includes('command-r') || 
+           model.id.includes('gemini-1.0-pro') ||
+           model.id.includes('phi'));
+        
+        // Determine model category with better organization
+        let category;
+        if (model.id.includes('claude')) {
+          category = 'Anthropic';
+        } else if (model.id.includes('llama')) {
+          category = 'Meta';
+        } else if (model.id.includes('mistral') || model.id.includes('mixtral')) {
+          category = 'Mistral';
+        } else if (model.id.includes('gpt') || model.id.includes('openai')) {
+          category = 'OpenAI';
+        } else if (model.id.includes('gemini') || model.id.includes('palm')) {
+          category = 'Google';
+        } else if (model.id.includes('command-r') || model.id.includes('cohere')) {
+          category = 'Cohere';
+        } else if (model.id.includes('falcon')) {
+          category = 'TII';
+        } else if (model.id.includes('phi')) {
+          category = 'Microsoft';
+        } else {
+          // Use the provider name as the category if no specific match
+          category = provider;
+        }
+        
+        // Special case for "vision" or multimodal capabilities
+        if (model.id.includes('vision') || model.context_length > 100000) {
+          category += ' (Advanced)';
+        }
+        
+        return {
+          id: model.id,
+          name: model.name || model.id.split('/').pop(),
+          isFree: isPricingFree || isFreeByHeuristic,
+          category: category
+        };
+      });
+      
+      // Sort models by category and name for better user experience
+      models.sort((a, b) => {
+        // Group by category first
+        if (a.category !== b.category) {
+          return a.category.localeCompare(b.category);
+        }
+        
+        // Then sort by name
+        return a.name.localeCompare(b.name);
+      });
+      
+      return models;
+    }
+    
+    console.log("OpenRouter API returned invalid data format. Returning fallback model list.");
+    return fallbackOpenRouterModels;
+  } catch (error) {
+    console.error("Error fetching models from OpenRouter:", error);
+    return fallbackOpenRouterModels;
+  }
+}
+
+// For backward compatibility
+export const openRouterModels = fallbackOpenRouterModels;
 
 // System prompt for financial advisor role
 const SYSTEM_PROMPT = `
