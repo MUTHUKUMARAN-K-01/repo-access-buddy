@@ -1,20 +1,28 @@
-import OpenAI from 'openai';
 import * as dotenv from 'dotenv';
 import axios from 'axios';
 
 // Load environment variables
 dotenv.config();
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Deepseek API endpoint
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+// OpenRouter API configuration
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // AI model configuration
-export type AIModel = 'openai' | 'deepseek' | 'huggingface' | 'local';
+export type AIModel = 'openrouter' | 'local';
+
+// OpenRouter available models
+export const openRouterModels = [
+  { id: 'anthropic/claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
+  { id: 'anthropic/claude-3-opus', name: 'Claude 3 Opus' },
+  { id: 'anthropic/claude-3-sonnet', name: 'Claude 3 Sonnet' },
+  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku' },
+  { id: 'google/gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+  { id: 'meta-llama/llama-3-70b-instruct', name: 'Llama 3 70B' },
+  { id: 'mistralai/mistral-large', name: 'Mistral Large' },
+  { id: 'mistralai/mistral-medium', name: 'Mistral Medium' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o' },
+  { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo' }
+];
 
 // System prompt for financial advisor role
 const SYSTEM_PROMPT = `
@@ -37,13 +45,15 @@ acknowledge your limitations and suggest consulting a certified financial profes
  * Generate a response to a user's finance question using the specified AI model
  * @param userMessage The user's finance-related question or message
  * @param chatHistory Previous messages for context (optional)
- * @param model The AI model to use (local, openai, deepseek, or huggingface)
+ * @param model The AI model to use (openrouter or local)
+ * @param selectedModelId The specific OpenRouter model ID to use
  * @returns AI-generated response
  */
 export async function generateFinanceResponse(
   userMessage: string, 
   chatHistory: string[] = [],
-  model: AIModel = 'local'
+  model: AIModel = 'local',
+  selectedModelId: string = 'openai/gpt-4o'
 ): Promise<string> {
   // If model is explicitly set to local or if it's a simple greeting/short message,
   // use the local response generator directly without trying external APIs
@@ -53,13 +63,8 @@ export async function generateFinanceResponse(
   }
   
   try {
-    // Use the appropriate model based on the parameter
-    if (model === 'deepseek') {
-      return await generateDeepseekResponse(userMessage, chatHistory);
-    } else if (model === 'huggingface') {
-      return await generateHuggingFaceResponse(userMessage, chatHistory);
-    } else if (model === 'openai') {
-      return await generateOpenAIResponse(userMessage, chatHistory);
+    if (model === 'openrouter') {
+      return await generateOpenRouterResponse(userMessage, chatHistory, selectedModelId);
     } else {
       // Default to local response generator
       return generateLocalFinanceResponse(userMessage);
@@ -74,20 +79,24 @@ export async function generateFinanceResponse(
 }
 
 /**
- * Generate a response using OpenAI
+ * Generate a response using OpenRouter API with the specified model
  * @param userMessage The user's finance-related question
  * @param chatHistory Previous messages for context
+ * @param modelId The specific model ID to use through OpenRouter
  * @returns AI-generated response
  */
-async function generateOpenAIResponse(userMessage: string, chatHistory: string[] = []): Promise<string> {
+async function generateOpenRouterResponse(
+  userMessage: string, 
+  chatHistory: string[] = [], 
+  modelId: string = 'openai/gpt-4o'
+): Promise<string> {
   // Default fallback response if API call fails
   let response = "I'm having trouble connecting to my knowledge base right now. Please try again in a moment.";
   
-  if (!process.env.OPENAI_API_KEY) {
-    return "API key not configured. Please set the OPENAI_API_KEY environment variable.";
+  if (!process.env.OPENROUTER_API_KEY) {
+    return "OpenRouter API key not configured. Please set the OPENROUTER_API_KEY environment variable.";
   }
 
-  // Format chat history for the API
   type MessageRole = 'system' | 'user' | 'assistant';
   const messages: Array<{role: MessageRole, content: string}> = [
     { role: 'system', content: SYSTEM_PROMPT },
@@ -108,63 +117,12 @@ async function generateOpenAIResponse(userMessage: string, chatHistory: string[]
   // Add the current user message
   messages.push({ role: 'user', content: userMessage });
 
-  // Make API request with type assertion to avoid type errors
-  const completion = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
-    messages: messages as any,
-    max_tokens: 500,
-    temperature: 0.7,
-  });
-
-  // Extract and return the generated response
-  if (completion.choices && completion.choices.length > 0) {
-    response = completion.choices[0].message.content || response;
-  }
-
-  return response;
-}
-
-/**
- * Generate a response using Deepseek API
- * @param userMessage The user's finance-related question
- * @param chatHistory Previous messages for context
- * @returns AI-generated response
- */
-async function generateDeepseekResponse(userMessage: string, chatHistory: string[] = []): Promise<string> {
-  // Default fallback response if API call fails
-  let response = "I'm having trouble connecting to my knowledge base right now. Please try again in a moment.";
-  
-  if (!process.env.DEEPSEEK_API_KEY) {
-    return "Deepseek API key not configured. Please set the DEEPSEEK_API_KEY environment variable.";
-  }
-
-  // Format messages for Deepseek API
-  const messages = [];
-  
-  // Add system message
-  messages.push({ role: "system", content: SYSTEM_PROMPT });
-  
-  // Add chat history if available
-  if (chatHistory.length > 0) {
-    for (let i = 0; i < chatHistory.length; i += 2) {
-      if (i < chatHistory.length) {
-        messages.push({ role: "user", content: chatHistory[i] });
-      }
-      if (i + 1 < chatHistory.length) {
-        messages.push({ role: "assistant", content: chatHistory[i + 1] });
-      }
-    }
-  }
-  
-  // Add the current user message
-  messages.push({ role: "user", content: userMessage });
-
   try {
-    // Make API request to Deepseek
-    const deepseekResponse = await axios.post(
-      DEEPSEEK_API_URL,
+    // Make API request to OpenRouter
+    const openRouterResponse = await axios.post(
+      OPENROUTER_API_URL,
       {
-        model: "deepseek-chat", // Using Deepseek's basic model
+        model: modelId,
         messages: messages,
         temperature: 0.7,
         max_tokens: 500,
@@ -172,106 +130,24 @@ async function generateDeepseekResponse(userMessage: string, chatHistory: string
       {
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "https://replit.com/",
+          "X-Title": "FinanceGuru App"
         },
       }
     );
 
     // Extract the response content
-    if (deepseekResponse.data && 
-        deepseekResponse.data.choices && 
-        deepseekResponse.data.choices.length > 0 &&
-        deepseekResponse.data.choices[0].message) {
-      response = deepseekResponse.data.choices[0].message.content || response;
+    if (openRouterResponse.data && 
+        openRouterResponse.data.choices && 
+        openRouterResponse.data.choices.length > 0 &&
+        openRouterResponse.data.choices[0].message) {
+      response = openRouterResponse.data.choices[0].message.content || response;
     }
   } catch (error) {
-    console.error("Error with Deepseek API:", error);
+    console.error("Error with OpenRouter API:", error);
     if (axios.isAxiosError(error) && error.response) {
-      throw new Error(`Deepseek API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
-    } else {
-      throw error;
-    }
-  }
-
-  return response;
-}
-
-/**
- * Generate a response using HuggingFace's free Inference API - no API key needed
- * @param userMessage The user's finance-related question
- * @param chatHistory Previous messages for context
- * @returns AI-generated response
- */
-async function generateHuggingFaceResponse(userMessage: string, chatHistory: string[] = []): Promise<string> {
-  // Default fallback response if API call fails
-  let response = "I'm having trouble connecting to my knowledge base right now. Please try again in a moment.";
-  
-  // Create context from chat history and current message
-  let context = "";
-  
-  if (chatHistory.length > 0) {
-    for (let i = 0; i < chatHistory.length; i++) {
-      const role = i % 2 === 0 ? "User" : "AI";
-      context += `${role}: ${chatHistory[i]}\n`;
-    }
-  }
-  
-  // Build prompt for the financial advisor
-  const prompt = `${SYSTEM_PROMPT}
-
-${context ? context + "\n" : ""}User: ${userMessage}
-
-AI:`;
-
-  try {
-    // Make API request to HuggingFace Inference API
-    // Using a model that works with the free endpoint without authentication
-    const huggingFaceResponse = await axios.post(
-      "https://api-inference.huggingface.co/models/Xenova/LaMini-GPT-124M",
-      {
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 500,
-          temperature: 0.7,
-          top_p: 0.95,
-          do_sample: true,
-          return_full_text: false
-        },
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (huggingFaceResponse.data && typeof huggingFaceResponse.data === 'string') {
-      // Remove the prompt part from the response and extract just the AI's answer
-      const generatedText = huggingFaceResponse.data;
-      // Use [\s\S] instead of . with s flag for better compatibility
-      const aiResponseMatch = generatedText.match(/AI:([\s\S]*?)(?:User:|$)/);
-      response = aiResponseMatch ? aiResponseMatch[1].trim() : generatedText;
-    } else if (Array.isArray(huggingFaceResponse.data) && huggingFaceResponse.data.length > 0) {
-      // Extract generated text from array response format
-      const generatedText = huggingFaceResponse.data[0]?.generated_text || "";
-      // Use [\s\S] instead of . with s flag for better compatibility
-      const aiResponseMatch = generatedText.match(/AI:([\s\S]*?)(?:User:|$)/);
-      response = aiResponseMatch ? aiResponseMatch[1].trim() : generatedText;
-    } else if (huggingFaceResponse.data?.generated_text) {
-      // Handle alternate response format
-      const generatedText = huggingFaceResponse.data.generated_text;
-      // Use [\s\S] instead of . with s flag for better compatibility
-      const aiResponseMatch = generatedText.match(/AI:([\s\S]*?)(?:User:|$)/);
-      response = aiResponseMatch ? aiResponseMatch[1].trim() : generatedText;
-    }
-  } catch (error) {
-    console.error("Error with HuggingFace API:", error);
-    if (axios.isAxiosError(error) && error.response) {
-      // If the error suggests the model is loading, let the user know
-      if (error.response.status === 503 && error.response.data?.error?.includes("Loading")) {
-        return "The AI model is currently loading. This is a free service and might take a moment to initialize. Please try again in a few seconds.";
-      }
-      throw new Error(`HuggingFace API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      throw new Error(`OpenRouter API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
     } else {
       throw error;
     }
@@ -331,54 +207,19 @@ export function generateLocalFinanceResponse(userMessage: string): string {
   
   // Retirement planning
   if (message.includes("retire") || message.includes("retirement") || message.includes("401k") || message.includes("ira") || message.includes("pension")) {
-    return "Planning for retirement is essential for long-term financial security. Here's how to prepare:\n\n1. Start saving as early as possible to benefit from compound growth\n2. Aim to save 15% of your income for retirement (including employer matches)\n3. Maximize tax-advantaged accounts in this order:\n   - 401(k) or 403(b) up to employer match\n   - HSA if eligible (triple tax advantage)\n   - Roth IRA or Traditional IRA\n   - Remainder in 401(k) or taxable accounts\n4. Adjust your asset allocation to become more conservative as you approach retirement\n5. Consider working with a fee-only financial advisor for personalized retirement planning\n\nThe 4% rule suggests you can withdraw 4% of your retirement savings annually with minimal risk of running out of money over a 30-year retirement.";
+    return "Planning for retirement is essential for long-term financial security. Here's how to prepare:\n\n1. Start saving as early as possible to benefit from compound growth\n2. Aim to save 15% of your income for retirement (including employer matches)\n3. Maximize tax-advantaged accounts in this order:\n   - 401(k) or 403(b) up to employer match\n   - HSA if eligible (triple tax advantage)\n   - Roth IRA or Traditional IRA\n   - Remainder in 401(k) or taxable accounts\n4. Adjust your asset allocation to become more conservative as you approach retirement\n5. Consider working with a fee-only financial advisor for personalized retirement planning\n\nThe 4% rule suggests you can withdraw about 4% of your retirement savings annually without running out of money. This means you need approximately 25 times your annual expenses saved for retirement.";
+  }
+  
+  // Financial goal setting
+  if (message.includes("goal") || message.includes("plan") || message.includes("future") || message.includes("target")) {
+    return "Setting financial goals is key to long-term success. Follow these steps:\n\n1. Set SMART goals: Specific, Measurable, Achievable, Relevant, Time-bound\n2. Categorize goals as short-term (< 1 year), medium-term (1-5 years), and long-term (5+ years)\n3. Prioritize goals based on importance and urgency\n4. Break down larger goals into smaller, actionable steps\n5. Regularly review and adjust your goals as circumstances change\n\nWhat specific financial goals are you currently working toward?";
   }
   
   // Insurance questions
-  if (message.includes("insurance") || message.includes("insure") || message.includes("coverage") || message.includes("policy") || message.includes("premium")) {
-    return "Insurance protects your financial future from catastrophic events. Here are key types to consider:\n\n1. Health insurance - Essential for everyone to avoid medical bankruptcy\n2. Auto insurance - Required by law in most places\n3. Home/renters insurance - Protects your dwelling and possessions\n4. Life insurance - Important if others depend on your income\n5. Disability insurance - Replaces income if you can't work\n6. Umbrella policy - Provides additional liability protection\n\nFocus on high-deductible policies that protect against financial disasters, not small expenses you could cover from your emergency fund.";
+  if (message.includes("insurance") || message.includes("insure") || message.includes("coverage") || message.includes("protect")) {
+    return "Insurance is crucial for protecting your financial health. Here are key types to consider:\n\n1. Health insurance - Provides coverage for medical expenses\n2. Auto insurance - Required for drivers in most states\n3. Homeowners/renters insurance - Protects your property and possessions\n4. Life insurance - Provides for dependents in case of your death\n5. Disability insurance - Replaces income if you're unable to work\n6. Umbrella policy - Additional liability coverage above other policies\n\nReview your insurance coverage annually and whenever you experience major life changes (marriage, children, new home, etc.). Always shop around for the best rates while ensuring adequate coverage.";
   }
   
-  // Financial independence / FIRE
-  if (message.includes("financial independence") || message.includes("early retirement") || message.includes("fire movement") || message.includes("financial freedom")) {
-    return "The FIRE (Financial Independence, Retire Early) movement focuses on aggressive saving and investing to achieve financial freedom sooner. Core principles include:\n\n1. Increase your savings rate dramatically (often 50-70% of income)\n2. Reduce expenses by embracing frugality and minimalism\n3. Invest in low-cost index funds for long-term growth\n4. Build passive income streams through investments\n5. Use the 4% rule to determine your FIRE number (25x annual expenses)\n\nThere are different FIRE approaches: Lean FIRE (extreme frugality), Fat FIRE (higher spending level), and Barista FIRE (part-time work with partial financial independence). Which approach interests you most?";
-  }
-  
-  // Student loans
-  if (message.includes("student loan") || message.includes("college debt") || message.includes("education loan") || message.includes("student debt")) {
-    return "Managing student loan debt requires a strategic approach:\n\n1. Know your loans - federal vs private, interest rates, terms\n2. Explore repayment options for federal loans (income-driven, extended plans)\n3. Consider refinancing private loans if you can qualify for lower rates\n4. Look into loan forgiveness programs if you work in public service\n5. Make extra payments toward higher-interest loans when possible\n6. Stay informed about policy changes that might affect student loan repayment\n\nFederal loans offer more protections and flexible repayment options than private loans, so consider this carefully before refinancing federal loans.";
-  }
-  
-  // Side hustles or additional income
-  if (message.includes("side hustle") || message.includes("extra income") || message.includes("passive income") || message.includes("earn more")) {
-    return "Increasing your income can accelerate your financial goals. Consider these options:\n\n1. Freelancing in your professional field\n2. Sharing economy (Uber, Airbnb, etc.)\n3. Online marketplaces for skills (teaching, writing, design)\n4. Creating digital products (courses, ebooks, printables)\n5. Monetizing a hobby or passion project\n\nWhen evaluating side hustles, consider the time commitment, upfront costs, and potential return. The best side hustle aligns with your skills and interests while fitting into your schedule.";
-  }
-  
-  // Personal financial planning
-  if (message.includes("plan") || message.includes("goals") || message.includes("financial plan") || message.includes("roadmap")) {
-    return "Creating a personal financial plan is essential for achieving your goals. Here's how to get started:\n\n1. Define your financial goals (short-term, medium-term, and long-term)\n2. Assess your current financial situation (income, expenses, assets, liabilities)\n3. Create a budget that aligns with your goals\n4. Build an emergency fund (3-6 months of expenses)\n5. Pay off high-interest debt\n6. Save for retirement through tax-advantaged accounts\n7. Invest according to your timeline and risk tolerance\n8. Review and adjust your plan regularly\n\nA comprehensive financial plan serves as your roadmap to financial security and should evolve as your life circumstances change.";
-  }
-
-  // Cryptocurrency/blockchain questions
-  if (message.includes("crypto") || message.includes("bitcoin") || message.includes("ethereum") || message.includes("blockchain") || message.includes("nft")) {
-    return "Cryptocurrencies are highly volatile investments that should only be considered as a small portion of a well-diversified portfolio. Here's what to know:\n\n1. Only invest money you can afford to lose completely\n2. Consider cryptocurrencies as speculative, high-risk investments\n3. Research thoroughly before investing (tokenomics, use cases, team)\n4. Use reputable exchanges with strong security measures\n5. Consider storage options carefully (hot wallets vs. cold storage)\n6. Be aware of tax implications of crypto transactions\n\nCryptocurrencies are still an emerging asset class with significant regulatory uncertainty. They should typically represent no more than 5% of your investment portfolio, if any.";
-  }
-
-  // Economic concerns (inflation, recession)
-  if (message.includes("inflation") || message.includes("recession") || message.includes("economy") || message.includes("economic")) {
-    return "Economic conditions like inflation and recessions affect your finances in important ways. Here's how to prepare:\n\n1. During inflation:\n   - Focus on increasing your income\n   - Invest in assets that historically outpace inflation (stocks, real estate)\n   - Consider I-bonds or TIPS for inflation-protected savings\n   - Review your budget regularly as prices increase\n\n2. During recessions:\n   - Build a larger emergency fund (6-12 months of expenses)\n   - Secure multiple income streams if possible\n   - Reduce discretionary spending\n   - Avoid taking on new debt\n   - Continue investing regularly (dollar-cost averaging)\n\nRemember that economic cycles are normal. A diversified financial plan should account for both good and challenging economic conditions.";
-  }
-
-  // Children/family financial planning
-  if (message.includes("child") || message.includes("children") || message.includes("kid") || message.includes("college") || message.includes("education fund") || message.includes("529")) {
-    return "Financial planning for children and education requires early preparation. Consider these strategies:\n\n1. Education funding options:\n   - 529 College Savings Plans (tax-advantaged growth for education)\n   - Coverdell Education Savings Accounts (for K-12 and college expenses)\n   - UTMA/UGMA custodial accounts (more flexible but less tax advantages)\n   - Roth IRAs (can be used for education without penalty)\n\n2. When to start: As early as possible, ideally when your child is born\n\n3. How much to save: Target at least 1/3 of expected college costs\n\n4. Beyond education:\n   - Consider life insurance to protect your family\n   - Create or update your will and guardianship arrangements\n   - Teach children about money management from an early age\n\nRemember that while education is important, prioritize your retirement savings first. Your children can borrow for college, but you can't borrow for retirement.";
-  }
-
-  // Career and income growth
-  if (message.includes("career") || message.includes("salary") || message.includes("income") || message.includes("negotiate") || message.includes("raise") || message.includes("promotion")) {
-    return "Growing your income is one of the most powerful ways to improve your finances. Consider these strategies:\n\n1. In your current job:\n   - Document your achievements and value-add metrics\n   - Research market rates for your position and experience level\n   - Prepare for performance reviews with specific accomplishments\n   - Request additional responsibilities that can lead to advancement\n\n2. Career development:\n   - Invest in skills that are in high demand in your industry\n   - Build your professional network both inside and outside your company\n   - Consider certifications or additional education if ROI is positive\n   - Look for lateral moves that open new career paths\n\n3. Negotiation tips:\n   - Focus on your value rather than your needs\n   - Practice your pitch and anticipate objections\n   - Consider the entire compensation package, not just salary\n   - Be willing to walk away if necessary\n\nRemember that job-hopping strategically (every 2-4 years) often results in larger income increases than staying with one employer long-term.";
-  }
-
-  // Generic response for other questions
-  return "Thank you for your question! As your financial assistant, I can provide guidance on budgeting, saving, investing, debt management, retirement planning, and many other personal finance topics. To give you the most helpful advice, could you provide a bit more detail about your specific situation or what you're trying to achieve financially?";
+  // Default response for other financial questions
+  return "That's an interesting financial question. To provide the best advice, I'd need to understand more about your specific financial situation, goals, and timeline. Could you provide more details about your current financial circumstances and what you're hoping to achieve?";
 }

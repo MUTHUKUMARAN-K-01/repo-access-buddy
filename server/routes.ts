@@ -8,7 +8,7 @@ import {
   insertUserSchema 
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
-import { generateFinanceResponse, generateLocalFinanceResponse } from "./aiService";
+import { generateFinanceResponse, generateLocalFinanceResponse, AIModel, openRouterModels } from "./aiService";
 import { getStockQuote, getHistoricalData, searchStocks, getCompanyOverview } from "./stockService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -158,13 +158,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "An error occurred retrieving chat messages" });
     }
   });
+  
+  // Get available AI models for the chat
+  router.get("/ai-models", (req: Request, res: Response) => {
+    res.status(200).json({
+      models: [
+        { id: 'local', name: 'Local AI (No API)' },
+        ...openRouterModels
+      ]
+    });
+  });
 
   // Post a new chat message
   router.post("/chat", async (req: Request, res: Response) => {
     try {
       const messageData = insertChatMessageSchema.parse(req.body);
       // Get the AI model type from the request (defaulting to Local if not specified)
-      const modelType = (req.body.modelType as 'openai' | 'deepseek' | 'huggingface' | 'local') || 'local';
+      const modelType = (req.body.modelType as AIModel) || 'local';
+      // Get the specific OpenRouter model ID if provided
+      const selectedModelId = req.body.selectedModelId as string || 'openai/gpt-4o';
 
       // Get or create default user if none exists
       let user = await storage.getUser(messageData.userId);
@@ -198,17 +210,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let aiResponse: string;
       
       try {
-        // Use the appropriate model based on the request
-        console.log(`Generating response using ${modelType} model`);
+        if (modelType === 'openrouter') {
+          console.log(`Generating response using OpenRouter with model: ${selectedModelId}`);
+        } else {
+          console.log(`Generating response using ${modelType} model`);
+        }
         
-        // Actually use the AI models instead of local fallback
+        // Pass the selectedModelId to the API function
         aiResponse = await generateFinanceResponse(
           messageData.message,
           chatHistory,
-          modelType
+          modelType,
+          selectedModelId
         );
       } catch (error) {
-        console.error(`Error with ${modelType} API:`, error);
+        console.error(`Error with AI API:`, error);
         // Fall back to local response generator if the API call fails
         console.log(`Falling back to local response generator due to API error`);
         aiResponse = generateLocalFinanceResponse(messageData.message);

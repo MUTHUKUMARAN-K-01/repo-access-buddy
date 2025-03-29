@@ -2,10 +2,15 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useChat, AIModel } from "@/hooks/use-chat";
-import { Send } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { useChat, AIModel, AIModelOption } from "@/hooks/use-chat";
+import { Loader, Send } from "lucide-react";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue 
+} from "@/components/ui/select";
 
 type MessageType = {
   id: string;
@@ -14,9 +19,19 @@ type MessageType = {
 };
 
 export default function FinanceChat() {
-  const { messages, isLoading, sendMessage, selectedModel, changeModel } = useChat();
+  const { 
+    messages, 
+    isLoading, 
+    sendMessage, 
+    selectedModel, 
+    changeModel,
+    availableModels,
+    isLoadingModels,
+    selectedOpenRouterModel,
+    changeOpenRouterModel
+  } = useChat();
   const [newMessage, setNewMessage] = useState("");
-
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() === "") return;
@@ -24,22 +39,11 @@ export default function FinanceChat() {
     sendMessage(newMessage);
     setNewMessage("");
   };
-  
-  // Function to cycle through models: OpenAI -> Deepseek -> HuggingFace -> OpenAI
-  const handleModelToggle = () => {
-    if (selectedModel === 'openai') {
-      changeModel('deepseek');
-    } else if (selectedModel === 'deepseek') {
-      changeModel('huggingface');
-    } else {
-      changeModel('openai');
-    }
-  };
 
   return (
     <Card className="w-full">
       <div className="p-6 bg-blue-50 border-b border-gray-200">
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
           <div>
             <h3 className="text-xl font-semibold text-gray-800 flex items-center">
               <span className="material-icons mr-2">chat</span>
@@ -49,45 +53,55 @@ export default function FinanceChat() {
           </div>
           
           {/* Model Selector */}
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center border rounded-md p-1">
+          <div className="flex flex-col gap-2 w-full md:w-auto">
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
                 variant={selectedModel === 'local' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => changeModel('local')}
-                className="text-xs px-2 py-1"
+                className="flex-1 md:flex-none"
               >
-                Local
+                Local AI
               </Button>
               <Button
                 type="button"
-                variant={selectedModel === 'openai' ? 'default' : 'outline'}
+                variant={selectedModel === 'openrouter' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => changeModel('openai')}
-                className="text-xs px-2 py-1"
+                onClick={() => changeModel('openrouter')}
+                className="flex-1 md:flex-none"
               >
-                OpenAI
-              </Button>
-              <Button
-                type="button"
-                variant={selectedModel === 'deepseek' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => changeModel('deepseek')}
-                className="text-xs px-2 py-1"
-              >
-                Deepseek
-              </Button>
-              <Button
-                type="button"
-                variant={selectedModel === 'huggingface' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => changeModel('huggingface')}
-                className="text-xs px-2 py-1"
-              >
-                HuggingFace
+                OpenRouter
               </Button>
             </div>
+            
+            {selectedModel === 'openrouter' && (
+              <Select
+                value={selectedOpenRouterModel}
+                onValueChange={changeOpenRouterModel}
+                disabled={isLoadingModels}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingModels ? (
+                    <div className="flex items-center justify-center p-2">
+                      <Loader className="h-4 w-4 animate-spin mr-2" />
+                      <span>Loading models...</span>
+                    </div>
+                  ) : (
+                    availableModels
+                      .filter(model => model.id !== 'local')
+                      .map(model => (
+                        <SelectItem key={model.id} value={model.id}>
+                          {model.name}
+                        </SelectItem>
+                      ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
       </div>
@@ -171,11 +185,10 @@ export default function FinanceChat() {
           </p>
           <p className="text-xs text-gray-500">
             <span className="material-icons text-xs align-middle">smart_toy</span>
-            Using {
-              selectedModel === 'openai' ? 'OpenAI' : 
-              selectedModel === 'deepseek' ? 'Deepseek' : 
-              selectedModel === 'huggingface' ? 'HuggingFace' : 'Local'
-            } model
+            Using {selectedModel === 'local' ? 'Local AI' : 
+              selectedModel === 'openrouter' ? 
+                `OpenRouter: ${selectedOpenRouterModel.split('/').pop()}` : 
+                'Unknown'} model
           </p>
         </div>
       </CardContent>
