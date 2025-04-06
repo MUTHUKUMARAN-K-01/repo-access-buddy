@@ -107,7 +107,7 @@ export async function fetchOpenRouterModels(): Promise<AIModelOption[]> {
       });
       
       // Sort models by category and name for better user experience
-      models.sort((a, b) => {
+      models.sort((a: AIModelOption, b: AIModelOption) => {
         // Group by category first
         if (a.category !== b.category) {
           return a.category.localeCompare(b.category);
@@ -122,7 +122,7 @@ export async function fetchOpenRouterModels(): Promise<AIModelOption[]> {
     
     console.log("OpenRouter API returned invalid data format. Returning fallback model list.");
     return fallbackOpenRouterModels;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching models from OpenRouter:", error);
     return fallbackOpenRouterModels;
   }
@@ -208,7 +208,7 @@ export async function generateFinanceResponse(
       console.error("Unexpected response format from OpenRouter:", response.data);
       return generateLocalFinanceResponse(userMessage);
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error calling OpenRouter API:", error);
     if (axios.isAxiosError(error)) {
       console.error("API Error details:", {

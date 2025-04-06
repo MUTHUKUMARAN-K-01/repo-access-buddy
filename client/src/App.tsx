@@ -1,44 +1,24 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import NotFound from "@/pages/not-found";
-import Home from "@/pages/home";
-import Budget from "@/pages/budget";
-import Investing from "@/pages/investing";
-import Goals from "@/pages/goals";
-import Education from "@/pages/education";
-import LearningHub from "@/pages/learning-hub";
-import Header from "@/components/layout/header";
-import Footer from "@/components/layout/footer";
 
-function Router() {
+import React from 'react';
+
+const App = () => {
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      <main className="flex-1">
-        <Switch>
-          <Route path="/" component={Home} />
-          <Route path="/budget" component={Budget} />
-          <Route path="/investing" component={Investing} />
-          <Route path="/goals" component={Goals} />
-          <Route path="/education" component={Education} />
-          <Route path="/learning-hub" component={LearningHub} />
-          <Route component={NotFound} />
-        </Switch>
-      </main>
-      <Footer />
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <div className="container mx-auto px-4 py-12">
+        <h1 className="text-3xl font-bold text-center text-blue-800 mb-8">
+          AI Finance Tracker
+        </h1>
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md mx-auto">
+          <p className="text-gray-700 mb-4">
+            Welcome to your AI-powered finance tracking application!
+          </p>
+          <p className="text-gray-600">
+            This platform helps you manage your finances, track expenses, and receive AI-powered insights to improve your financial health.
+          </p>
+        </div>
+      </div>
     </div>
   );
-}
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
-    </QueryClientProvider>
-  );
-}
+};
 
 export default App;
