@@ -4,6 +4,7 @@
   "description": "AI-powered finance tracking application - Server",
   "main": "server/index.ts",
   "scripts": {
+    "build:dev": "vite build --mode development",
     "dev": "tsx server/index.ts",
     "build": "tsc",
     "start": "node dist/index.js"
