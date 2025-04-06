@@ -5,7 +5,7 @@ import {
   FinancialGoal, InsertFinancialGoal
 } from "@shared/schema";
 import { db, sql } from './db';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { users, financialProfiles, chatMessages, financialGoals } from '../shared/schema';
 
 export interface IStorage {
@@ -190,7 +190,7 @@ export class MemStorage implements IStorage {
     return goal;
   }
   
-  async updateFinancialGoal(id: number, updateData: Partial<InsertFinancialGoal>): Promise<FinancialGoal | undefined> {
+  async updateFinancialGoal(id: number, goal: Partial<InsertFinancialGoal>): Promise<FinancialGoal | undefined> {
     const existingGoal = await this.getFinancialGoal(id);
     
     if (!existingGoal) {
@@ -198,14 +198,14 @@ export class MemStorage implements IStorage {
     }
     
     // Handle the special case for the deadline field
-    const deadline = updateData.deadline !== undefined ? updateData.deadline : existingGoal.deadline;
+    const deadline = goal.deadline !== undefined ? goal.deadline : existingGoal.deadline;
     
     const updatedGoal: FinancialGoal = {
       ...existingGoal,
-      title: updateData.title || existingGoal.title,
-      targetAmount: updateData.targetAmount || existingGoal.targetAmount,
-      currentAmount: updateData.currentAmount || existingGoal.currentAmount,
-      category: updateData.category || existingGoal.category,
+      title: goal.title || existingGoal.title,
+      targetAmount: goal.targetAmount || existingGoal.targetAmount,
+      currentAmount: goal.currentAmount || existingGoal.currentAmount,
+      category: goal.category || existingGoal.category,
       deadline: deadline
     };
     
@@ -223,101 +223,44 @@ export class PostgresStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     try {
-      // Use SQL tagged template for proper parameter interpolation
-      const result = await sql`SELECT * FROM users WHERE id = ${id}`;
-      
-      if (result.length === 0) {
-        return undefined;
-      }
-      
-      // Map database row to our User type
-      return {
-        id: result[0].id,
-        username: result[0].username,
-        password: result[0].password_hash, // Column is 'password_hash' in the database
-        email: result[0].email,
-        createdAt: result[0].created_at
-      };
+      const result = await db.select().from(users).where(eq(users.id, id));
+      return result[0];
     } catch (error) {
-      console.error('Error fetching user by ID:', error);
-      throw error;
+      console.error("Error getting user:", error);
+      throw new Error("Failed to retrieve user");
     }
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
-      // Use SQL tagged template for proper parameter interpolation
-      const result = await sql`
-        SELECT * FROM users WHERE username = ${username}
-      `;
-      
-      if (result.length === 0) {
-        return undefined;
-      }
-      
-      // Map database row to our User type
-      return {
-        id: result[0].id,
-        username: result[0].username,
-        password: result[0].password_hash, // Column is 'password_hash' in the database
-        email: result[0].email,
-        createdAt: result[0].created_at
-      };
+      const result = await db.select().from(users).where(eq(users.username, username));
+      return result[0];
     } catch (error) {
-      console.error('Error fetching user by username:', error);
-      throw error;
+      console.error("Error getting user by username:", error);
+      throw new Error("Failed to retrieve user by username");
     }
   }
   
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
-      // Use SQL tagged template for proper parameter interpolation
-      const result = await sql`SELECT * FROM users WHERE email = ${email}`;
-      
-      if (result.length === 0) {
-        return undefined;
-      }
-      
-      // Map database row to our User type
-      return {
-        id: result[0].id,
-        username: result[0].username,
-        password: result[0].password_hash, // Column is 'password_hash' in the database
-        email: result[0].email,
-        createdAt: result[0].created_at
-      };
+      const result = await db.select().from(users).where(eq(users.email, email));
+      return result[0];
     } catch (error) {
-      console.error('Error fetching user by email:', error);
-      throw error;
+      console.error("Error getting user by email:", error);
+      throw new Error("Failed to retrieve user by email");
     }
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
-      // Use direct SQL to ensure column names match the database
-      // Note: In the schema, the field is password, but in DB it's password_hash
-      const result = await sql`
-        INSERT INTO users (username, email, password_hash) 
-        VALUES (${insertUser.username}, ${insertUser.email}, ${insertUser.password}) 
-        RETURNING *
-      `;
-      
-      if (result.length === 0) {
-        throw new Error('Failed to create user');
+      const [user] = await db.insert(users).values(insertUser).returning();
+      if (!user) {
+        throw new Error("Failed to create user");
       }
-      
-      // Map database row to our User type, matching our schema
-      // Handle mismatched column names between schema and DB
-      return {
-        id: result[0].id,
-        username: result[0].username,
-        password: result[0].password_hash, // DB uses password_hash, schema uses password
-        email: result[0].email,
-        createdAt: result[0].created_at
-      };
+      return user;
     } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
+      console.error("Error creating user:", error);
+      throw new Error("Failed to create user");
     }
   }
   
@@ -326,7 +269,7 @@ export class PostgresStorage implements IStorage {
     try {
       const result = await db.select().from(financialProfiles)
         .where(eq(financialProfiles.userId, userId));
-      return result.length > 0 ? result[0] : undefined;
+      return result[0];
     } catch (error) {
       console.error('Error fetching financial profile:', error);
       throw error;
@@ -335,24 +278,11 @@ export class PostgresStorage implements IStorage {
   
   async createFinancialProfile(insertProfile: InsertFinancialProfile): Promise<FinancialProfile> {
     try {
-      // Map the financial profile to match our database schema
-      // This helps handle the differences between our in-memory and SQL models
-      const profileData = {
-        userId: insertProfile.userId,
-        monthlyIncome: insertProfile.monthlyIncome,
-        // Map to our SQL schema columns (snake_case to camelCase)
-        housingExpense: insertProfile.housingExpense,
-        transportExpense: insertProfile.transportExpense,
-        foodExpense: insertProfile.foodExpense,
-        otherExpenses: insertProfile.otherExpenses,
-        savingsGoal: insertProfile.savingsGoal,
-        retirementGoal: insertProfile.retirementGoal,
-        riskTolerance: insertProfile.riskTolerance
-      };
-      
-      const result = await db.insert(financialProfiles).values(profileData).returning();
-      
-      return result[0];
+      const [profile] = await db.insert(financialProfiles).values(insertProfile).returning();
+      if (!profile) {
+        throw new Error("Failed to create financial profile");
+      }
+      return profile;
     } catch (error) {
       console.error('Error creating financial profile:', error);
       throw error;
@@ -361,13 +291,7 @@ export class PostgresStorage implements IStorage {
   
   async updateFinancialProfile(userId: number, updateData: Partial<InsertFinancialProfile>): Promise<FinancialProfile | undefined> {
     try {
-      const profile = await this.getFinancialProfile(userId);
-      
-      if (!profile) {
-        return undefined;
-      }
-      
-      const result = await db.update(financialProfiles)
+      const [profile] = await db.update(financialProfiles)
         .set({
           ...updateData,
           updatedAt: new Date(),
@@ -375,7 +299,7 @@ export class PostgresStorage implements IStorage {
         .where(eq(financialProfiles.userId, userId))
         .returning();
       
-      return result.length > 0 ? result[0] : undefined;
+      return profile;
     } catch (error) {
       console.error('Error updating financial profile:', error);
       throw error;
@@ -385,58 +309,40 @@ export class PostgresStorage implements IStorage {
   // Chat Message operations
   async getChatMessages(userId: number, limit?: number): Promise<ChatMessage[]> {
     try {
-      // Get all messages for user, ordered by timestamp
-      const result = await db.select().from(chatMessages)
-        .where(eq(chatMessages.userId, userId));
+      const query = db.select().from(chatMessages)
+        .where(eq(chatMessages.userId, userId))
+        .orderBy(desc(chatMessages.timestamp));
       
-      // Sort them manually to handle null timestamps
-      const sortedMessages = result.sort((a, b) => {
-        // Handle null timestamps by treating them as older
-        const aTime = a.timestamp ? a.timestamp.getTime() : 0;
-        const bTime = b.timestamp ? b.timestamp.getTime() : 0;
-        return aTime - bTime;
-      });
-      
-      // Apply limit if needed
-      if (limit && limit > 0) {
-        return sortedMessages.slice(-limit);
+      if (limit) {
+        query.limit(limit);
       }
       
-      return sortedMessages;
+      return await query;
     } catch (error) {
-      console.error('Error fetching chat messages:', error);
-      throw error;
+      console.error("Error getting chat messages:", error);
+      throw new Error("Failed to retrieve chat messages");
     }
   }
   
-  async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
+  async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
     try {
-      const result = await db.insert(chatMessages).values({
-        userId: insertMessage.userId,
-        message: insertMessage.message,
-        isUserMessage: insertMessage.isUserMessage,
-      }).returning();
-      
-      return result[0];
+      const [chatMessage] = await db.insert(chatMessages).values(message).returning();
+      if (!chatMessage) {
+        throw new Error("Failed to create chat message");
+      }
+      return chatMessage;
     } catch (error) {
-      console.error('Error creating chat message:', error);
-      throw error;
+      console.error("Error creating chat message:", error);
+      throw new Error("Failed to create chat message");
     }
   }
   
   // Financial Goal operations
   async getFinancialGoals(userId: number): Promise<FinancialGoal[]> {
     try {
-      // Get all goals for the user
-      const result = await db.select().from(financialGoals)
-        .where(eq(financialGoals.userId, userId));
-      
-      // Sort manually to handle null createdAt values
-      return result.sort((a, b) => {
-        const aTime = a.createdAt ? a.createdAt.getTime() : 0;
-        const bTime = b.createdAt ? b.createdAt.getTime() : 0;
-        return aTime - bTime;
-      });
+      return await db.select().from(financialGoals)
+        .where(eq(financialGoals.userId, userId))
+        .orderBy(desc(financialGoals.createdAt));
     } catch (error) {
       console.error('Error fetching financial goals:', error);
       throw error;
@@ -447,7 +353,7 @@ export class PostgresStorage implements IStorage {
     try {
       const result = await db.select().from(financialGoals)
         .where(eq(financialGoals.id, id));
-      return result.length > 0 ? result[0] : undefined;
+      return result[0];
     } catch (error) {
       console.error('Error fetching financial goal:', error);
       throw error;
@@ -456,16 +362,11 @@ export class PostgresStorage implements IStorage {
   
   async createFinancialGoal(insertGoal: InsertFinancialGoal): Promise<FinancialGoal> {
     try {
-      const result = await db.insert(financialGoals).values({
-        userId: insertGoal.userId,
-        title: insertGoal.title,
-        targetAmount: insertGoal.targetAmount,
-        currentAmount: insertGoal.currentAmount,
-        deadline: insertGoal.deadline,
-        category: insertGoal.category,
-      }).returning();
-      
-      return result[0];
+      const [goal] = await db.insert(financialGoals).values(insertGoal).returning();
+      if (!goal) {
+        throw new Error("Failed to create financial goal");
+      }
+      return goal;
     } catch (error) {
       console.error('Error creating financial goal:', error);
       throw error;
@@ -474,12 +375,12 @@ export class PostgresStorage implements IStorage {
   
   async updateFinancialGoal(id: number, updateData: Partial<InsertFinancialGoal>): Promise<FinancialGoal | undefined> {
     try {
-      const result = await db.update(financialGoals)
+      const [goal] = await db.update(financialGoals)
         .set(updateData)
         .where(eq(financialGoals.id, id))
         .returning();
       
-      return result.length > 0 ? result[0] : undefined;
+      return goal;
     } catch (error) {
       console.error('Error updating financial goal:', error);
       throw error;

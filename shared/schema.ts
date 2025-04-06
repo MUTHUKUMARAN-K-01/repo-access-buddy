@@ -6,7 +6,7 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
-  password: text("password_hash").notNull(), // Column name in DB is password_hash
+  password_hash: text("password_hash").notNull(), // Changed from password to password_hash
   email: text("email").notNull().unique(),
   // fullName column doesn't exist in the database table
   createdAt: timestamp("created_at").defaultNow(),

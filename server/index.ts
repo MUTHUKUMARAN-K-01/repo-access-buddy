@@ -37,7 +37,8 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
+// Initialize the database before starting the server
+async function initializeServer() {
   try {
     // Initialize the database before starting the server
     if (process.env.USE_MEMORY_STORAGE !== 'true') {
@@ -78,8 +79,13 @@ app.use((req, res, next) => {
     }, () => {
       log(`serving on port ${port}`);
     });
+
+    return server;
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
   }
-})();
+}
+
+// Start the server
+initializeServer();

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { nanoid } from "nanoid";
 import { apiRequest } from "../lib/queryClient";
@@ -111,12 +110,26 @@ export function useChat() {
       const data = await response.json();
 
       // Add AI response to messages
-      setMessages((prev) => [
-        ...prev,
-        { id: nanoid(), text: data.aiMessage.message, isUser: false }
-      ]);
+      if (data.aiMessage && data.aiMessage.message) {
+        setMessages((prev) => [
+          ...prev,
+          { id: nanoid(), text: data.aiMessage.message, isUser: false }
+        ]);
+      } else {
+        console.error('No AI message in response:', data);
+        throw new Error('No AI message received');
+      }
     } catch (error) {
       console.error('Error sending message:', error);
+      // Add error message to chat
+      setMessages((prev) => [
+        ...prev,
+        { 
+          id: nanoid(), 
+          text: "I apologize, but I encountered an error processing your message. Please try again.", 
+          isUser: false 
+        }
+      ]);
     } finally {
       setIsLoading(false);
     }

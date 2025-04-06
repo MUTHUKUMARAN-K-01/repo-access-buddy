@@ -152,115 +152,73 @@ acknowledge your limitations and suggest consulting a certified financial profes
  * Generate a response to a user's finance question using the specified AI model
  * @param userMessage The user's finance-related question or message
  * @param chatHistory Previous messages for context (optional)
- * @param model The AI model to use (openrouter or local)
+ * @param modelType The AI model type to use (openrouter or local)
  * @param selectedModelId The specific OpenRouter model ID to use
  * @returns AI-generated response
  */
 export async function generateFinanceResponse(
-  userMessage: string, 
-  chatHistory: string[] = [],
-  model: AIModel = 'local',
+  userMessage: string,
+  chatHistory: string[],
+  modelType: AIModel = 'local',
   selectedModelId: string = 'openai/gpt-4o'
 ): Promise<string> {
-  // If model is explicitly set to local or if it's a simple greeting/short message,
-  // use the local response generator directly without trying external APIs
-  if (model === 'local' || 
-      userMessage.toLowerCase().match(/^(hi|hello|hey|howdy|greetings)(\s|$|[!?.,])/)) {
+  if (modelType === 'local') {
     return generateLocalFinanceResponse(userMessage);
   }
-  
-  try {
-    if (model === 'openrouter') {
-      return await generateOpenRouterResponse(userMessage, chatHistory, selectedModelId);
-    } else {
-      // Default to local response generator
-      return generateLocalFinanceResponse(userMessage);
-    }
-  } catch (error) {
-    console.error("Error generating AI response:", error);
-    
-    // Always fall back to the local response generator when APIs fail
-    console.log("Falling back to local response generator");
-    return generateLocalFinanceResponse(userMessage);
-  }
-}
 
-/**
- * Generate a response using OpenRouter API with the specified model
- * @param userMessage The user's finance-related question
- * @param chatHistory Previous messages for context
- * @param modelId The specific model ID to use through OpenRouter
- * @returns AI-generated response
- */
-async function generateOpenRouterResponse(
-  userMessage: string, 
-  chatHistory: string[] = [], 
-  modelId: string = 'openai/gpt-4o'
-): Promise<string> {
-  // Default fallback response if API call fails
-  let response = "I'm having trouble connecting to my knowledge base right now. Please try again in a moment.";
-  
   if (!process.env.OPENROUTER_API_KEY) {
-    return "OpenRouter API key not configured. Please set the OPENROUTER_API_KEY environment variable.";
+    console.error("OpenRouter API key not configured. Falling back to local response.");
+    return generateLocalFinanceResponse(userMessage);
   }
-
-  type MessageRole = 'system' | 'user' | 'assistant';
-  const messages: Array<{role: MessageRole, content: string}> = [
-    { role: 'system', content: SYSTEM_PROMPT },
-  ];
-  
-  // Add chat history if available
-  if (chatHistory.length > 0) {
-    for (let i = 0; i < chatHistory.length; i += 2) {
-      if (i < chatHistory.length) {
-        messages.push({ role: 'user', content: chatHistory[i] });
-      }
-      if (i + 1 < chatHistory.length) {
-        messages.push({ role: 'assistant', content: chatHistory[i + 1] });
-      }
-    }
-  }
-  
-  // Add the current user message
-  messages.push({ role: 'user', content: userMessage });
 
   try {
-    // Make API request to OpenRouter
-    const openRouterResponse = await axios.post(
+    // Format the chat history for the API
+    const messages = chatHistory.map((msg, index) => ({
+      role: index % 2 === 0 ? 'user' : 'assistant',
+      content: msg
+    }));
+
+    // Add the current user message
+    messages.push({
+      role: 'user',
+      content: userMessage
+    });
+
+    const response = await axios.post(
       OPENROUTER_API_URL,
       {
-        model: modelId,
+        model: selectedModelId,
         messages: messages,
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 1000
       },
       {
         headers: {
-          "Content-Type": "application/json",
           "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
           "HTTP-Referer": "https://replit.com/",
-          "X-Title": "FinanceGuru App"
-        },
+          "X-Title": "FinanceGuru App",
+          "Content-Type": "application/json"
+        }
       }
     );
 
-    // Extract the response content
-    if (openRouterResponse.data && 
-        openRouterResponse.data.choices && 
-        openRouterResponse.data.choices.length > 0 &&
-        openRouterResponse.data.choices[0].message) {
-      response = openRouterResponse.data.choices[0].message.content || response;
+    if (response.data && response.data.choices && response.data.choices[0]) {
+      return response.data.choices[0].message.content;
+    } else {
+      console.error("Unexpected response format from OpenRouter:", response.data);
+      return generateLocalFinanceResponse(userMessage);
     }
   } catch (error) {
-    console.error("Error with OpenRouter API:", error);
-    if (axios.isAxiosError(error) && error.response) {
-      throw new Error(`OpenRouter API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
-    } else {
-      throw error;
+    console.error("Error calling OpenRouter API:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("API Error details:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
     }
+    return generateLocalFinanceResponse(userMessage);
   }
-
-  return response;
 }
 
 /**

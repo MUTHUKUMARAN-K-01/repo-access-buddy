@@ -22,6 +22,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // --- User routes ---
 
+  // Test route to create a default user
+  router.post("/users/create-test", async (req: Request, res: Response) => {
+    try {
+      const testUser = {
+        username: "testuser",
+        email: "test@example.com",
+        password_hash: "testpassword"
+      };
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(testUser.username);
+      if (existingUser) {
+        return res.status(200).json({ message: "Test user already exists", user: existingUser });
+      }
+
+      const newUser = await storage.createUser(testUser);
+
+      // Don't return password in response
+      const { password_hash, ...userWithoutPassword } = newUser;
+      res.status(201).json({ message: "Test user created", user: userWithoutPassword });
+    } catch (error) {
+      console.error("Error creating test user:", error);
+      res.status(500).json({ message: "An error occurred creating test user" });
+    }
+  });
+
   // Register a new user
   router.post("/users/register", async (req: Request, res: Response) => {
     try {
@@ -41,7 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newUser = await storage.createUser(userData);
 
       // Don't return password in response
-      const { password, ...userWithoutPassword } = newUser;
+      const { password_hash, ...userWithoutPassword } = newUser;
       res.status(201).json(userWithoutPassword);
     } catch (error) {
       // Check if it's a ZodError using a safer approach
@@ -72,12 +98,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserByUsername(username);
 
       // In the database, the field is "password_hash" but in our schema it's mapped to "password"
-      if (!user || user.password !== password) {
+      if (!user || user.password_hash !== password) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       // Don't return password in response
-      const { password: _, ...userWithoutPassword } = user;
+      const { password_hash, ...userWithoutPassword } = user;
       res.status(200).json(userWithoutPassword);
     } catch (error) {
       res.status(500).json({ message: "An error occurred during login" });
@@ -206,42 +232,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   router.post("/chat", async (req: Request, res: Response) => {
     try {
       const messageData = insertChatMessageSchema.parse(req.body);
-      // Get the AI model type from the request (defaulting to Local if not specified)
       const modelType = (req.body.modelType as AIModel) || 'local';
-      // Get the specific OpenRouter model ID if provided
       const selectedModelId = req.body.selectedModelId as string || 'openai/gpt-4o';
 
       // Get or create default user if none exists
       let user = await storage.getUser(messageData.userId);
       if (!user) {
         try {
-          // Create a default user for chat - using password_hash as per the schema
+          // Create a default user for chat with a unique username
+          const guestUsername = `guest_${Date.now()}_${Math.random().toString(36).substring(7)}`;
           user = await storage.createUser({
-            username: `guest_${messageData.userId}`,
-            password: "guest_password", // This will be mapped to password_hash in PostgresStorage
-            email: `guest_${messageData.userId}@example.com`
+            username: guestUsername,
+            password_hash: "guest_password",
+            email: `${guestUsername}@example.com`
           });
+          
+          // Update the message data with the new user ID
+          messageData.userId = user.id;
         } catch (error) {
-          console.error("Error creating user:", error);
-          // If user creation fails, assume user exists and continue
-          // This is a fallback mechanism if there's a schema mismatch
+          console.error("Error creating guest user:", error);
+          return res.status(500).json({ 
+            message: "Failed to create guest user",
+            error: error instanceof Error ? error.message : "Unknown error"
+          });
         }
       }
 
       // Save user message
-      const savedMessage = await storage.createChatMessage(messageData);
+      let savedMessage;
+      try {
+        savedMessage = await storage.createChatMessage(messageData);
+      } catch (error) {
+        console.error("Error saving user message:", error);
+        return res.status(500).json({ 
+          message: "Failed to save user message",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
 
       // Get previous chat messages for context (last 5 messages)
       const previousMessages = await storage.getChatMessages(messageData.userId, 5);
-      const chatHistory: string[] = [];
-      
-      // Format previous messages for the AI (convert to pairs of user/assistant messages)
-      previousMessages.forEach(msg => {
-        chatHistory.push(msg.message);
-      });
+      const chatHistory: string[] = previousMessages.map(msg => msg.message);
       
       let aiResponse: string;
-      
       try {
         if (modelType === 'openrouter') {
           console.log(`Generating response using OpenRouter with model: ${selectedModelId}`);
@@ -249,7 +282,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Generating response using ${modelType} model`);
         }
         
-        // Pass the selectedModelId to the API function
         aiResponse = await generateFinanceResponse(
           messageData.message,
           chatHistory,
@@ -258,32 +290,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       } catch (error) {
         console.error(`Error with AI API:`, error);
-        // Fall back to local response generator if the API call fails
-        console.log(`Falling back to local response generator due to API error`);
         aiResponse = generateLocalFinanceResponse(messageData.message);
       }
 
       // Save AI response
-      const aiMessage = await storage.createChatMessage({
-        userId: messageData.userId,
-        message: aiResponse,
-        isUserMessage: 0
-      });
+      let aiMessage;
+      try {
+        aiMessage = await storage.createChatMessage({
+          userId: messageData.userId,
+          message: aiResponse,
+          isUserMessage: 0
+        });
+      } catch (error) {
+        console.error("Error saving AI response:", error);
+        return res.status(500).json({ 
+          message: "Failed to save AI response",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
 
-      res.status(201).json({ userMessage: savedMessage, aiMessage });
+      // Send response back to client
+      res.status(201).json({ 
+        userMessage: savedMessage, 
+        aiMessage,
+        user: {
+          id: user.id,
+          username: user.username
+        }
+      });
     } catch (error) {
-      // Check if it's a ZodError using a safer approach
       if (error instanceof Error) {
         if ('issues' in error && Array.isArray((error as any).issues)) {
-          // This is likely a ZodError
           res.status(400).json({ message: fromZodError(error as any).message });
         } else {
-          // Regular Error
           res.status(400).json({ message: error.message || "Invalid chat message data" });
         }
       } else {
-        // Unknown error
-        res.status(500).json({ message: "An error occurred saving the chat message" });
+        res.status(500).json({ message: "An error occurred processing the chat message" });
       }
     }
   });

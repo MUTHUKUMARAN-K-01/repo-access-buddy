@@ -10,14 +10,36 @@ dotenv.config();
 neonConfig.fetchConnectionCache = true;
 
 // Create database connection
-export const sql = neon(process.env.DATABASE_URL!);
+const sql = neon(process.env.DATABASE_URL!);
 export const db = drizzle(sql);
+
+// Function to drop all tables
+async function dropAllTables() {
+  console.log('Dropping all tables...');
+  try {
+    await sql`DROP TABLE IF EXISTS financial_goals CASCADE`;
+    await sql`DROP TABLE IF EXISTS chat_messages CASCADE`;
+    await sql`DROP TABLE IF EXISTS financial_profiles CASCADE`;
+    await sql`DROP TABLE IF EXISTS users CASCADE`;
+    console.log('All tables dropped successfully');
+  } catch (error) {
+    console.error('Error dropping tables:', error);
+    throw error;
+  }
+}
 
 // Initialize database with schema (this should be replaced with proper migrations)
 export async function initializeDatabase() {
   console.log('Initializing database...');
   
   try {
+    // Test database connection
+    await sql`SELECT 1`;
+    console.log('Database connection successful');
+    
+    // Drop existing tables first
+    await dropAllTables();
+    
     // Create tables if they don't exist
     // Users table
     await sql`
@@ -25,8 +47,7 @@ export async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         username VARCHAR(100) NOT NULL UNIQUE,
         email VARCHAR(100) NOT NULL UNIQUE,
-        password VARCHAR(100) NOT NULL,
-        full_name VARCHAR(100),
+        password_hash VARCHAR(100) NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
