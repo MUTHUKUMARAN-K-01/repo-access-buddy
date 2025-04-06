@@ -1,99 +1,94 @@
-import { neon, neonConfig } from '@neondatabase/serverless';
-import * as dotenv from 'dotenv';
-import { drizzle } from 'drizzle-orm/neon-http';
-import { users, financialProfiles, chatMessages, financialGoals } from '../shared/schema';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import * as schema from './schema';
 
-// Load environment variables
-dotenv.config();
+const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finance';
 
-// Configure neon client
-neonConfig.fetchConnectionCache = true;
+// for query purposes
+const queryClient = postgres(connectionString, { max: 1 });
+export const db = drizzle(queryClient, { schema });
 
-// Create database connection
-const sql = neon(process.env.DATABASE_URL!);
-export const db = drizzle(sql);
-
-// Function to drop all tables
-async function dropAllTables() {
-  console.log('Dropping all tables...');
+// Test database connection
+export const testConnection = async () => {
   try {
-    await sql`DROP TABLE IF EXISTS financial_goals CASCADE`;
-    await sql`DROP TABLE IF EXISTS chat_messages CASCADE`;
-    await sql`DROP TABLE IF EXISTS financial_profiles CASCADE`;
-    await sql`DROP TABLE IF EXISTS users CASCADE`;
-    console.log('All tables dropped successfully');
-  } catch (error) {
-    console.error('Error dropping tables:', error);
-    throw error;
-  }
-}
-
-// Initialize database with schema (this should be replaced with proper migrations)
-export async function initializeDatabase() {
-  console.log('Initializing database...');
-  
-  try {
-    // Test database connection
-    await sql`SELECT 1`;
+    await queryClient`SELECT 1`;
     console.log('Database connection successful');
-    
-    // Drop existing tables first
-    await dropAllTables();
-    
-    // Create tables if they don't exist
-    // Users table
-    await sql`
+    return true;
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    return false;
+  }
+};
+
+// Initialize database
+export const initializeDatabase = async () => {
+  console.log('Initializing database...');
+  try {
+    const isConnected = await testConnection();
+    if (!isConnected) {
+      throw new Error('Could not connect to database');
+    }
+
+    // In production, we don't want to drop tables automatically
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Dropping all tables...');
+      // Drop tables in reverse order to handle foreign key constraints
+      await queryClient`DROP TABLE IF EXISTS financial_goals CASCADE`;
+      await queryClient`DROP TABLE IF EXISTS chat_messages CASCADE`;
+      await queryClient`DROP TABLE IF EXISTS financial_profiles CASCADE`;
+      await queryClient`DROP TABLE IF EXISTS users CASCADE`;
+      console.log('All tables dropped successfully');
+    }
+
+    // Create tables
+    await queryClient`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        username VARCHAR(100) NOT NULL UNIQUE,
-        email VARCHAR(100) NOT NULL UNIQUE,
-        password_hash VARCHAR(100) NOT NULL,
+        username VARCHAR(255) NOT NULL UNIQUE,
+        email VARCHAR(255),
+        password_hash VARCHAR(255),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
     console.log('Users table initialized');
 
-    // Financial profiles table
-    await sql`
+    await queryClient`
       CREATE TABLE IF NOT EXISTS financial_profiles (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        monthly_income DECIMAL(12, 2),
-        housing_expense DECIMAL(12, 2),
-        transport_expense DECIMAL(12, 2),
-        food_expense DECIMAL(12, 2),
-        other_expenses DECIMAL(12, 2),
-        savings_goal DECIMAL(12, 2),
-        retirement_goal DECIMAL(12, 2),
-        risk_tolerance VARCHAR(50),
+        user_id INTEGER REFERENCES users(id),
+        income DECIMAL,
+        savings DECIMAL,
+        expenses DECIMAL,
+        investment_preferences TEXT,
+        risk_tolerance TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
     console.log('Financial profiles table initialized');
 
-    // Chat messages table
-    await sql`
+    await queryClient`
       CREATE TABLE IF NOT EXISTS chat_messages (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        message TEXT NOT NULL,
-        is_user_message SMALLINT NOT NULL,
-        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        user_id INTEGER REFERENCES users(id),
+        content TEXT NOT NULL,
+        is_user_message BOOLEAN NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
     console.log('Chat messages table initialized');
 
-    // Financial goals table
-    await sql`
+    await queryClient`
       CREATE TABLE IF NOT EXISTS financial_goals (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        title VARCHAR(100) NOT NULL,
-        target_amount DECIMAL(12, 2) NOT NULL,
-        current_amount DECIMAL(12, 2) NOT NULL,
-        deadline TIMESTAMP WITH TIME ZONE,
-        category VARCHAR(50) NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        user_id INTEGER REFERENCES users(id),
+        title VARCHAR(255) NOT NULL,
+        target_amount DECIMAL,
+        current_amount DECIMAL DEFAULT 0,
+        deadline DATE,
+        status VARCHAR(50) DEFAULT 'in_progress',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
     console.log('Financial goals table initialized');
@@ -103,4 +98,4 @@ export async function initializeDatabase() {
     console.error('Error initializing database:', error);
     throw error;
   }
-}
+};
