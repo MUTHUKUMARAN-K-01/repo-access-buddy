@@ -8,12 +8,12 @@
     "paths": {
       "@shared/*": ["../shared/*"]
     },
-    "module": "ESNext",
+    "module": "NodeNext",
     "target": "ESNext",
     "lib": ["ESNext"],
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "moduleResolution": "node"
+    "moduleResolution": "NodeNext"
   },
   "include": [
     "**/*.ts",

@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+// Import as ESM module
 import { componentTagger } from 'lovable-tagger';
 
 // https://vitejs.dev/config/
