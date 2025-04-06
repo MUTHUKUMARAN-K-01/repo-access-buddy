@@ -1,11 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "npm install --legacy-peer-deps && npm run build",
+  "buildCommand": "npm install --force && npm run build",
+  "installCommand": "npm install --force",
   "outputDirectory": "client/dist",
   "builds": [
     {
       "src": "server/index.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "installCommand": "npm install --force"
+      }
     }
   ],
   "routes": [
