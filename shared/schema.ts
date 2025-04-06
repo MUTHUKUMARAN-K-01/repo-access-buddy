@@ -3,13 +3,12 @@ import { pgTable, text, serial, integer, numeric, timestamp, boolean } from "dri
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// User model - Match actual database structure
+// User model
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
-  password_hash: text("password_hash").notNull(), // Changed from password to password_hash
+  password_hash: text("password_hash").notNull(),
   email: text("email").notNull().unique(),
-  // fullName column doesn't exist in the database table
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -32,9 +31,9 @@ export const financialProfiles = pgTable("financial_profiles", {
 export const chatMessages = pgTable("chat_messages", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
-  message: text("message").notNull(),
+  message: text("content").notNull(),
   isUserMessage: integer("is_user_message").notNull(), // 1 for user, 0 for system
-  timestamp: timestamp("timestamp").defaultNow(),
+  timestamp: timestamp("created_at").defaultNow(),
 });
 
 // Financial Goal model

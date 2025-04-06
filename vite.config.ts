@@ -8,11 +8,10 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === 'development' && {
-      name: 'lovable-tagger',
+      name: 'dev-server-plugin',
       apply: 'serve',
-      // Simple placeholder that doesn't require importing the ESM package
       configureServer() {
-        console.log('Lovable tagger initialized');
+        console.log('Development server initialized');
       }
     }
   ].filter(Boolean),
