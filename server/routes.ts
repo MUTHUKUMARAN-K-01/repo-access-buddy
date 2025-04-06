@@ -6,7 +6,7 @@ import {
   insertFinancialGoalSchema, 
   insertFinancialProfileSchema, 
   insertUserSchema 
-} from "@shared/schema";
+} from "../shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { 
   generateFinanceResponse, 

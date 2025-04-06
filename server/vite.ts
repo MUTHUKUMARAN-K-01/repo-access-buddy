@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-import { createServer as createViteServer, createLogger } from "vite";
+import { createServer as createViteServer, createLogger, type InlineConfig, type LogErrorOptions, type LogOptions } from "vite";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 
@@ -25,19 +25,15 @@ export function log(message: string, source = "express") {
 
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
-    middlewareMode: true,
+    middlewareMode: true as const,
     hmr: { server },
     allowedHosts: ['*'] as true | string[], // Fix the type here
   };
 
   // Use a dynamic import for the vite.config.js
-  const viteConfig = {
+  const viteConfig: InlineConfig = {
     server: serverOptions,
-    appType: "custom",
-  };
-
-  const vite = await createViteServer({
-    ...viteConfig,
+    appType: "custom" as const,
     configFile: false,
     customLogger: {
       ...viteLogger,
@@ -46,7 +42,9 @@ export async function setupVite(app: Express, server: Server) {
         process.exit(1);
       },
     },
-  });
+  };
+
+  const vite = await createViteServer(viteConfig);
 
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {

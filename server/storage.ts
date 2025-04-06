@@ -1,9 +1,10 @@
+
 import { 
   User, InsertUser, 
   FinancialProfile, InsertFinancialProfile,
   ChatMessage, InsertChatMessage,
   FinancialGoal, InsertFinancialGoal
-} from "@shared/schema";
+} from "../shared/schema";
 import { db, sql } from './db';
 import { eq, desc } from 'drizzle-orm';
 import { users, financialProfiles, chatMessages, financialGoals } from '../shared/schema';
