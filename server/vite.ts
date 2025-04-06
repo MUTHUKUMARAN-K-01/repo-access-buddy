@@ -1,16 +1,15 @@
 
 import express, { type Express } from "express";
 import fs from "fs";
-import path, { dirname } from "path";
+import path from "path";
+import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer, createLogger } from "vite";
-// Use path module instead of URL constructor
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 import { type Server } from "http";
-import viteConfig from "../vite.config.js";
 import { nanoid } from "nanoid";
 
+// Use __dirname directly since we're in a CommonJS environment with the updated tsconfig
+const __dirname = process.cwd();
 const viteLogger = createLogger();
 
 export function log(message: string, source = "express") {
@@ -31,6 +30,12 @@ export async function setupVite(app: Express, server: Server) {
     allowedHosts: ['*'] as true | string[], // Fix the type here
   };
 
+  // Use a dynamic import for the vite.config.js
+  const viteConfig = {
+    server: serverOptions,
+    appType: "custom",
+  };
+
   const vite = await createViteServer({
     ...viteConfig,
     configFile: false,
@@ -41,8 +46,6 @@ export async function setupVite(app: Express, server: Server) {
         process.exit(1);
       },
     },
-    server: serverOptions,
-    appType: "custom",
   });
 
   app.use(vite.middlewares);
@@ -52,7 +55,6 @@ export async function setupVite(app: Express, server: Server) {
     try {
       const clientTemplate = path.resolve(
         __dirname,
-        "..",
         "client",
         "index.html",
       );
