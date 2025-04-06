@@ -4,9 +4,9 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "..",
-    "baseUrl": ".",
+    "baseUrl": "..",
     "paths": {
-      "@shared/*": ["../shared/*"]
+      "@shared/*": ["shared/*"]
     },
     "module": "NodeNext",
     "target": "ESNext",
