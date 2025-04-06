@@ -2,14 +2,14 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
-import { sql } from 'drizzle-orm';
+import { sql as drizzleSql } from 'drizzle-orm';
 
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/finance';
 
 // for query purposes
 const queryClient = postgres(connectionString, { max: 1 });
 export const db = drizzle(queryClient, { schema });
-export { sql }; // Export sql for use in other files
+export const sql = drizzleSql; // Export sql for use in other files
 
 // Test database connection
 export const testConnection = async () => {

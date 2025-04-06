@@ -1,4 +1,5 @@
-import { pgTable, text, serial, integer, numeric, timestamp } from "drizzle-orm/pg-core";
+
+import { pgTable, text, serial, integer, numeric, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -49,22 +50,30 @@ export const financialGoals = pgTable("financial_goals", {
 });
 
 // Define insert schemas using drizzle-zod
-export const insertUserSchema = createInsertSchema(users).omit({
+export const insertUserSchema = createInsertSchema(users, {
+  // Add any additional validation here
+}).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertFinancialProfileSchema = createInsertSchema(financialProfiles).omit({
+export const insertFinancialProfileSchema = createInsertSchema(financialProfiles, {
+  // Add any additional validation here
+}).omit({
   id: true,
   updatedAt: true,
 });
 
-export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+export const insertChatMessageSchema = createInsertSchema(chatMessages, {
+  // Add any additional validation here
+}).omit({
   id: true,
   timestamp: true,
 });
 
-export const insertFinancialGoalSchema = createInsertSchema(financialGoals).omit({
+export const insertFinancialGoalSchema = createInsertSchema(financialGoals, {
+  // Add any additional validation here
+}).omit({
   id: true,
   createdAt: true,
 });
